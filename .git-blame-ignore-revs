@@ -1,0 +1,3 @@
+# Чисто форматирующие коммиты: git blame их пропускает
+# git config blame.ignoreRevsFile .git-blame-ignore-revs
+2a4ed0fed02562a05e3fb54abbd2369b44e5934d # Format sources with Prettier
