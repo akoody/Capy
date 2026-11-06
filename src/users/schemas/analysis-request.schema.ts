@@ -8,13 +8,13 @@ export type AnalysisRequestDocument = HydratedDocument<AnalysisRequest>;
 @Schema({ timestamps: true })
 export class AnalysisRequest {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
-  user: User;
+  user!: User;
 
   @Prop({ required: true, enum: ['transactions', 'savings', 'voice'] })
-  type: 'transactions' | 'savings' | 'voice';
+  type!: 'transactions' | 'savings' | 'voice';
 
   @Prop({ required: true })
-  timestamp: Date;
+  timestamp!: Date;
 }
 
 export const AnalysisRequestSchema =

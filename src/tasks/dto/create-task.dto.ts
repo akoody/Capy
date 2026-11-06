@@ -10,7 +10,7 @@ import {
 export class CreateTaskDto {
   @IsString()
   @MaxLength(500)
-  title: string;
+  title!: string;
 
   @IsOptional()
   @IsString()

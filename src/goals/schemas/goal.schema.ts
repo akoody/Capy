@@ -7,34 +7,34 @@ export type GoalDocument = HydratedDocument<Goal>;
 @Schema({ _id: false })
 class RecurringTransaction {
   @Prop()
-  amount: number;
+  amount!: number;
 
   @Prop()
-  frequency: 'daily' | 'weekly' | 'monthly';
+  frequency!: 'daily' | 'weekly' | 'monthly';
 
   @Prop()
-  startDate: Date;
+  startDate!: Date;
 }
 
 @Schema({ timestamps: true })
 export class Goal {
   @Prop({ required: true })
-  name: string;
+  name!: string;
 
   @Prop({ required: true })
-  targetAmount: number;
+  targetAmount!: number;
 
   @Prop({ default: 0 })
-  currentAmount: number;
+  currentAmount!: number;
 
   @Prop()
-  targetDate: Date;
+  targetDate!: Date;
 
   @Prop()
-  icon: string;
+  icon!: string;
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
-  user: User;
+  user!: User;
 
   @Prop({ type: RecurringTransaction })
   recurringTransaction?: RecurringTransaction;

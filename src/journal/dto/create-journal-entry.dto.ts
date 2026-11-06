@@ -2,7 +2,7 @@ import { IsString, IsOptional, IsDateString, IsArray } from 'class-validator';
 
 export class CreateJournalEntryDto {
   @IsString()
-  readonly content: string;
+  readonly content!: string;
 
   userId?: string;
 

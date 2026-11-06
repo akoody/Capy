@@ -7,19 +7,19 @@ export type TaskDocument = HydratedDocument<Task>;
 @Schema({ timestamps: true })
 export class Task {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
-  user: User;
+  user!: User;
 
   @Prop({ required: true, trim: true })
-  title: string;
+  title!: string;
 
   @Prop({ trim: true })
   description?: string;
 
   @Prop({ enum: ['open', 'done', 'cancelled'], default: 'open' })
-  status: 'open' | 'done' | 'cancelled';
+  status!: 'open' | 'done' | 'cancelled';
 
   @Prop({ enum: ['low', 'medium', 'high'], default: 'medium' })
-  priority: 'low' | 'medium' | 'high';
+  priority!: 'low' | 'medium' | 'high';
 
   @Prop()
   dueAt?: Date;
@@ -33,7 +33,7 @@ export class Task {
     ],
     default: [],
   })
-  reminders: { fireAt: Date; sentAt?: Date }[];
+  reminders!: { fireAt: Date; sentAt?: Date }[];
 
   @Prop()
   completedAt?: Date;

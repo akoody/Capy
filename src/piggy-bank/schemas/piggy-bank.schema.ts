@@ -12,10 +12,10 @@ export class PiggyBank {
     required: true,
     unique: true,
   })
-  user: User;
+  user!: User;
 
   @Prop({ default: 0 })
-  amount: number;
+  amount!: number;
 }
 
 export const PiggyBankSchema = SchemaFactory.createForClass(PiggyBank);

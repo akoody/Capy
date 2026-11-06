@@ -7,17 +7,17 @@ export type FriendRequestDocument = HydratedDocument<FriendRequest>;
 @Schema({ timestamps: true })
 export class FriendRequest {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
-  requester: User;
+  requester!: User;
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
-  recipient: User;
+  recipient!: User;
 
   @Prop({
     required: true,
     enum: ['pending', 'accepted', 'rejected'],
     default: 'pending',
   })
-  status: 'pending' | 'accepted' | 'rejected';
+  status!: 'pending' | 'accepted' | 'rejected';
 }
 
 export const FriendRequestSchema = SchemaFactory.createForClass(FriendRequest);

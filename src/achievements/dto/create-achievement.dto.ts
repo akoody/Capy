@@ -2,14 +2,14 @@ import { IsString } from 'class-validator';
 
 export class CreateAchievementDto {
   @IsString()
-  readonly key: string;
+  readonly key!: string;
 
   @IsString()
-  readonly name: string;
+  readonly name!: string;
 
   @IsString()
-  readonly description: string;
+  readonly description!: string;
 
   @IsString()
-  readonly icon: string;
+  readonly icon!: string;
 }

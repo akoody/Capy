@@ -7,10 +7,10 @@ export type TransactionCategoryDocument = HydratedDocument<TransactionCategory>;
 @Schema({ timestamps: true })
 export class TransactionCategory {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
-  user: User;
+  user!: User;
 
   @Prop({ required: true, trim: true })
-  name: string;
+  name!: string;
 
   /** К каким операциям относится: расход, доход или оба варианта. */
   @Prop({
@@ -18,14 +18,14 @@ export class TransactionCategory {
     enum: ['expense', 'income', 'both'],
     default: 'both',
   })
-  kind: 'expense' | 'income' | 'both';
+  kind!: 'expense' | 'income' | 'both';
 
   /** Подсказка для голоса и ИИ: синонимы, что сюда относить. */
   @Prop({ trim: true })
   description?: string;
 
   @Prop({ default: false })
-  archived: boolean;
+  archived!: boolean;
 }
 
 export const TransactionCategorySchema =
