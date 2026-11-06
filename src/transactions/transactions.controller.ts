@@ -1,46 +1,47 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, Query } from '@nestjs/common';
-import { TransactionsService } from './transactions.service';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
+import { CurrentUserId } from '../auth/current-account';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
-import { TelegramUser } from '../auth/telegram-user.decorator';
-import { UsersService } from '../users/users.service';
-import type { TelegramUserPayload } from '../auth/telegram-init-data';
+import { TransactionsService } from './transactions.service';
 
 @Controller('transactions')
 export class TransactionsController {
-  constructor(
-    private readonly transactionsService: TransactionsService,
-    private readonly usersService: UsersService,
-  ) {}
-
-  private async getUserIdFromTelegram(telegramUser: TelegramUserPayload): Promise<string> {
-    const user = await this.usersService.findOrCreateByTelegramUser(telegramUser);
-    return user._id.toString();
-  }
+  constructor(private readonly transactionsService: TransactionsService) {}
 
   @Post()
-  create(@Body() createTransactionDto: CreateTransactionDto) {
-    return this.transactionsService.create(createTransactionDto);
+  create(@CurrentUserId() userId: string, @Body() dto: CreateTransactionDto) {
+    return this.transactionsService.create(userId, dto);
   }
 
   @Get()
-  findAll(@Query('userId') userId: string) {
+  findAll(@CurrentUserId() userId: string) {
     return this.transactionsService.findAllForUser(userId);
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() updateTransactionDto: UpdateTransactionDto) {
-    return this.transactionsService.update(id, updateTransactionDto);
+  update(
+    @CurrentUserId() userId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateTransactionDto,
+  ) {
+    return this.transactionsService.update(userId, id, dto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.transactionsService.remove(id);
+  remove(@CurrentUserId() userId: string, @Param('id') id: string) {
+    return this.transactionsService.remove(userId, id);
   }
 
   @Post('analyze')
-  async analyze(@TelegramUser() telegramUser: TelegramUserPayload) {
-    const userId = await this.getUserIdFromTelegram(telegramUser);
+  async analyze(@CurrentUserId() userId: string) {
     const analysis = await this.transactionsService.analyzeTransactions(userId);
     return { analysis };
   }

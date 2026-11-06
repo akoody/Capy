@@ -32,4 +32,12 @@ export default tseslint.config(
       "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },
+  {
+    // Тело ответа supertest типизировано как any: проверяем его через expect.
+    files: ['test/**/*.ts', 'src/**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+    },
+  },
 );

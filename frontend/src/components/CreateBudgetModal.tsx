@@ -28,7 +28,6 @@ const CreateBudgetModal = ({ isOpen, onClose, onSuccess }: CreateBudgetModalProp
         amount: Number(amount),
         category,
         period,
-        userId: '12345', // TODO: replace with real user ID
       });
       onSuccess();
       onClose();

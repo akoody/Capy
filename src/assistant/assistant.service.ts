@@ -22,7 +22,6 @@ import type { UploadedAudioFile } from './uploaded-audio-file';
 import { normalizeAudioForWhisper } from './normalize-audio-for-whisper';
 import { normalizeEnvSecret } from '../env-secrets';
 import "dotenv/config";
-import type { TelegramUserPayload } from '../auth/telegram-init-data';
 
 @Injectable()
 export class AssistantService {
@@ -39,11 +38,8 @@ export class AssistantService {
 
   async processVoiceCommand(
     file: UploadedAudioFile,
-    telegramUser: TelegramUserPayload,
+    userId: string,
   ): Promise<VoiceCommandResponseDto> {
-    const user = await this.usersService.findOrCreateByTelegramUser(telegramUser);
-    const userId = user._id.toString();
-
     await this.usersService.checkVoiceCommandLimit(userId);
 
     if (!file?.buffer?.length) {
@@ -1244,12 +1240,11 @@ ${catLine}
         (p.budget_name || p.description || 'Бюджет').trim() || 'Бюджет';
       const amount = p.amount!;
       const category = p.category!.trim();
-      await this.budgetsService.create({
+      await this.budgetsService.create(userMongoId, {
         name,
         amount,
         category,
         period: p.budget_period!,
-        userId: userMongoId,
       });
       return {
         message:
@@ -1280,7 +1275,7 @@ ${catLine}
       if (!tx) {
         throw new BadRequestException('Подходящая транзакция не найдена');
       }
-      await this.transactionsService.remove(String(tx._id));
+      await this.transactionsService.remove(userMongoId, String(tx._id));
       return {
         message:
           p.reply_hint ||
@@ -1294,7 +1289,7 @@ ${catLine}
       if (!goal) {
         throw new BadRequestException('Цель не найдена');
       }
-      await this.goalsService.remove(String(goal._id));
+      await this.goalsService.remove(userMongoId, String(goal._id));
       return {
         message: p.reply_hint || `Цель «${goal.name}» удалена`,
       };
@@ -1417,17 +1412,15 @@ ${catLine}
       const goalDto: {
         name: string;
         targetAmount: number;
-        userId: string;
         targetDate?: Date;
       } = {
         name,
         targetAmount: target,
-        userId: userMongoId,
       };
       if (p.date?.trim()) {
         goalDto.targetDate = new Date(p.date.trim());
       }
-      await this.goalsService.create(goalDto);
+      await this.goalsService.create(userMongoId, goalDto);
       return {
         message: p.reply_hint || `Цель «${name}» на ${target}`,
       };
@@ -1440,7 +1433,7 @@ ${catLine}
       if (!goal) {
         throw new BadRequestException('Цель не найдена');
       }
-      await this.goalsService.deposit(String(goal._id), {
+      await this.goalsService.deposit(userMongoId, String(goal._id), {
         amount,
       });
       return {
@@ -1455,7 +1448,7 @@ ${catLine}
       if (!goal) {
         throw new BadRequestException('Цель не найдена');
       }
-      await this.goalsService.withdraw(String(goal._id), {
+      await this.goalsService.withdraw(userMongoId, String(goal._id), {
         amount,
       });
       return {
@@ -1498,8 +1491,7 @@ ${catLine}
       if (p.affect_wallet) {
         desc = `${desc ? desc + ' ' : ''}(списано с кошелька)`;
       }
-      const tx = await this.transactionsService.create({
-        user: userMongoId,
+      const tx = await this.transactionsService.create(userMongoId, {
         type: 'expense',
         amount,
         category,
@@ -1533,8 +1525,7 @@ ${catLine}
       if (p.affect_wallet) {
         desc = `${desc ? desc + ' ' : ''}(пополнено в кошелек)`;
       }
-      const tx = await this.transactionsService.create({
-        user: userMongoId,
+      const tx = await this.transactionsService.create(userMongoId, {
         type: 'income',
         amount,
         category,

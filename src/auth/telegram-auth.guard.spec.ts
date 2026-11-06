@@ -6,6 +6,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { Public, TelegramAuthGuard } from './telegram-auth.guard';
 import { TelegramUser } from './telegram-user.decorator';
+import { ACCOUNT_RESOLVER, CurrentUserId } from './current-account';
 import type { TelegramUserPayload } from './telegram-init-data';
 import {
   buildInitData,
@@ -20,6 +21,11 @@ class ProbeController {
     return user;
   }
 
+  @Get('account')
+  account(@CurrentUserId() userId: string) {
+    return { userId };
+  }
+
   @Public()
   @Get('health')
   health() {
@@ -29,6 +35,9 @@ class ProbeController {
 
 describe('TelegramAuthGuard (HTTP)', () => {
   let app: INestApplication<App>;
+  const resolveAccountId = jest.fn((user: TelegramUserPayload) =>
+    Promise.resolve(`account-${user.id}`),
+  );
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -44,13 +53,17 @@ describe('TelegramAuthGuard (HTTP)', () => {
         }),
       ],
       controllers: [ProbeController],
-      providers: [{ provide: APP_GUARD, useClass: TelegramAuthGuard }],
+      providers: [
+        { provide: ACCOUNT_RESOLVER, useValue: { resolveAccountId } },
+        { provide: APP_GUARD, useClass: TelegramAuthGuard },
+      ],
     }).compile();
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();
   });
 
   afterAll(() => app.close());
+  beforeEach(() => resolveAccountId.mockClear());
 
   const auth = (initData: string) => ({ Authorization: `tma ${initData}` });
 
@@ -60,6 +73,24 @@ describe('TelegramAuthGuard (HTTP)', () => {
       .get('/me')
       .set(auth(initData))
       .expect(200, TEST_USER);
+  });
+
+  it('resolves the Capy account for the verified user', async () => {
+    const initData = buildInitData({ botToken: TEST_BOT_TOKEN });
+    await request(app.getHttpServer())
+      .get('/account')
+      .set(auth(initData))
+      .expect(200, { userId: `account-${TEST_USER.id}` });
+    expect(resolveAccountId).toHaveBeenCalledWith(TEST_USER);
+  });
+
+  it('does not touch accounts when the signature is invalid', async () => {
+    const forged = buildInitData({ botToken: '1:other' });
+    await request(app.getHttpServer())
+      .get('/account')
+      .set(auth(forged))
+      .expect(403);
+    expect(resolveAccountId).not.toHaveBeenCalled();
   });
 
   it('returns 401 without the tma header', async () => {

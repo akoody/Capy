@@ -1,5 +1,7 @@
 import { Controller, Get, Param, Post, Body } from '@nestjs/common';
 import { AcademyService } from './academy.service';
+import { CurrentUserId } from '../auth/current-account';
+import { CompleteLessonDto } from './dto/complete-lesson.dto';
 
 @Controller('academy')
 export class AcademyController {
@@ -16,7 +18,10 @@ export class AcademyController {
   }
 
   @Post('lessons/complete')
-  completeLesson(@Body() body: { userId: string; lessonId: string }) {
-    return this.academyService.completeLesson(body.userId, body.lessonId);
+  completeLesson(
+    @CurrentUserId() userId: string,
+    @Body() dto: CompleteLessonDto,
+  ) {
+    return this.academyService.completeLesson(userId, dto.lessonId);
   }
 }

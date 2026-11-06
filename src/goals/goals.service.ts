@@ -1,11 +1,16 @@
-import { Injectable, BadRequestException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
+import { ownedBy, orNotFound } from '../common/owned-by';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Goal, GoalDocument } from './schemas/goal.schema';
 import { CreateGoalDto } from './dto/create-goal.dto';
 import { UpdateGoalAmountDto } from './dto/update-goal-amount.dto';
 import { UsersService } from '../users/users.service';
-import { UserDocument } from '../users/schemas/user.schema';
 import { TransactionsService } from '../transactions/transactions.service';
 import { SetupRecurringTransactionDto } from './dto/setup-recurring-transaction.dto';
 
@@ -13,75 +18,74 @@ import { SetupRecurringTransactionDto } from './dto/setup-recurring-transaction.
 export class GoalsService {
   constructor(
     @InjectModel(Goal.name) private goalModel: Model<GoalDocument>,
-    @Inject(forwardRef(() => UsersService)) private readonly usersService: UsersService,
+    @Inject(forwardRef(() => UsersService))
+    private readonly usersService: UsersService,
     private readonly transactionsService: TransactionsService,
   ) {}
 
-  async create(createGoalDto: CreateGoalDto): Promise<Goal> {
-    const createdGoal = new this.goalModel({
-      ...createGoalDto,
-      user: createGoalDto.userId,
-    });
+  async create(userId: string, createGoalDto: CreateGoalDto): Promise<Goal> {
+    const createdGoal = new this.goalModel({ ...createGoalDto, user: userId });
     await createdGoal.save();
 
     // Check for first goal achievement
-    const userGoalsCount = await this.goalModel.countDocuments({ user: createGoalDto.userId });
+    const userGoalsCount = await this.goalModel.countDocuments({
+      user: userId,
+    });
     if (userGoalsCount === 1) {
-      await this.usersService.grantAchievement(
-        createGoalDto.userId,
-        'FIRST_GOAL',
-      );
+      await this.usersService.grantAchievement(userId, 'FIRST_GOAL');
     }
 
     return createdGoal;
   }
 
-  async findAllForUser(userId: string): Promise<Goal[]> {
+  async findAllForUser(userId: string): Promise<GoalDocument[]> {
     return this.goalModel.find({ user: userId }).exec();
   }
 
-  async findOne(id: string): Promise<Goal | null> {
-    return this.goalModel.findById(id).exec();
+  async findOne(userId: string, id: string): Promise<GoalDocument> {
+    const goal = await this.goalModel.findOne(ownedBy(userId, id)).exec();
+    return orNotFound(goal, 'Goal');
   }
 
   async deposit(
+    userId: string,
     id: string,
     updateGoalAmountDto: UpdateGoalAmountDto,
-  ): Promise<Goal | null> {
-    const goal = await this.findOne(id);
-    if (!goal) throw new BadRequestException('Goal not found.');
+  ): Promise<Goal> {
+    const goal = await this.findOne(userId, id);
 
-    const updatedGoal = await this.goalModel
-      .findByIdAndUpdate(
-        id,
-        { $inc: { currentAmount: updateGoalAmountDto.amount } },
-        { new: true },
-      )
-      .exec();
+    const updatedGoal = orNotFound(
+      await this.goalModel
+        .findOneAndUpdate(
+          ownedBy(userId, id),
+          { $inc: { currentAmount: updateGoalAmountDto.amount } },
+          { new: true },
+        )
+        .exec(),
+      'Goal',
+    );
 
-    if (updatedGoal) {
-      const userId = (updatedGoal.user as UserDocument)._id.toString();
+    // Check for achievements
+    const totalSavingsAggregation = await this.goalModel.aggregate<{
+      total: number;
+    }>([
+      { $match: { user: updatedGoal.user } },
+      { $group: { _id: null, total: { $sum: '$currentAmount' } } },
+    ]);
+    const totalSavings = totalSavingsAggregation[0]?.total || 0;
 
-      // Check for achievements
-      const totalSavingsAggregation = await this.goalModel.aggregate([
-        { $match: { user: (updatedGoal.user as UserDocument)._id } },
-        { $group: { _id: null, total: { $sum: '$currentAmount' } } },
-      ]);
-      const totalSavings = totalSavingsAggregation[0]?.total || 0;
+    if (totalSavings >= 10000) {
+      await this.usersService.grantAchievement(userId, 'SAVER_10K');
+    }
 
-      if (totalSavings >= 10000) {
-        await this.usersService.grantAchievement(userId, 'SAVER_10K');
-      }
-
-      if (updatedGoal.currentAmount >= updatedGoal.targetAmount) {
-        await this.usersService.grantAchievement(userId, 'TARGET_REACHED');
-        const completedGoalsCount = await this.goalModel.countDocuments({
-          user: (updatedGoal.user as UserDocument)._id,
-          currentAmount: { $gte: goal.targetAmount },
-        });
-        if (completedGoalsCount >= 5) {
-          await this.usersService.grantAchievement(userId, 'GOAL_MASTER_5');
-        }
+    if (updatedGoal.currentAmount >= updatedGoal.targetAmount) {
+      await this.usersService.grantAchievement(userId, 'TARGET_REACHED');
+      const completedGoalsCount = await this.goalModel.countDocuments({
+        user: updatedGoal.user,
+        currentAmount: { $gte: goal.targetAmount },
+      });
+      if (completedGoalsCount >= 5) {
+        await this.usersService.grantAchievement(userId, 'GOAL_MASTER_5');
       }
     }
 
@@ -89,11 +93,11 @@ export class GoalsService {
   }
 
   async withdraw(
+    userId: string,
     id: string,
     updateGoalAmountDto: UpdateGoalAmountDto,
-  ): Promise<Goal | null> {
-    const goal = await this.findOne(id);
-    if (!goal) throw new BadRequestException('Goal not found.');
+  ): Promise<Goal> {
+    const goal = await this.findOne(userId, id);
 
     if (goal.currentAmount < updateGoalAmountDto.amount) {
       throw new BadRequestException(
@@ -101,79 +105,64 @@ export class GoalsService {
       );
     }
 
-    const updatedGoal = await this.goalModel
-      .findByIdAndUpdate(
-        id,
-        { $inc: { currentAmount: -updateGoalAmountDto.amount } },
-        { new: true },
-      )
-      .exec();
-
     // No transaction logging for goal withdrawals
-
-    return updatedGoal;
+    return orNotFound(
+      await this.goalModel
+        .findOneAndUpdate(
+          ownedBy(userId, id),
+          { $inc: { currentAmount: -updateGoalAmountDto.amount } },
+          { new: true },
+        )
+        .exec(),
+      'Goal',
+    );
   }
 
   async setupRecurringTransaction(
+    userId: string,
     id: string,
     setupRecurringTransactionDto: SetupRecurringTransactionDto,
-  ): Promise<Goal | null> {
-    return this.goalModel
-      .findByIdAndUpdate(
-        id,
-        { recurringTransaction: setupRecurringTransactionDto },
-        { new: true },
-      )
-      .exec();
+  ): Promise<Goal> {
+    return this.updateOwned(userId, id, {
+      $set: { recurringTransaction: setupRecurringTransactionDto },
+    });
   }
 
-  async restore(id: string): Promise<Goal | null> {
-    const goal = await this.findOne(id);
-    if (!goal) throw new BadRequestException('Goal not found.');
-
+  async restore(userId: string, id: string): Promise<Goal> {
+    const goal = await this.findOne(userId, id);
     // Reset the goal to make it active again by setting current amount to target - 1
-    const updatedGoal = await this.goalModel
-      .findByIdAndUpdate(
-        id,
-        { 
-          $set: { 
-            currentAmount: Math.max(0, goal.targetAmount - 1) // Set to just below target to make it active
-          } 
-        },
-        { new: true },
-      )
-      .exec();
-
-    return updatedGoal;
+    return this.updateOwned(userId, id, {
+      $set: { currentAmount: Math.max(0, goal.targetAmount - 1) },
+    });
   }
 
-  async updateNotes(id: string, notes: string): Promise<Goal | null> {
-    const goal = await this.findOne(id);
-    if (!goal) throw new BadRequestException('Goal not found.');
-
-    return this.goalModel
-      .findByIdAndUpdate(
-        id,
-        { $set: { notes } },
-        { new: true },
-      )
-      .exec();
+  async updateNotes(userId: string, id: string, notes: string): Promise<Goal> {
+    return this.updateOwned(userId, id, { $set: { notes } });
   }
 
-  async remove(id: string): Promise<any> {
-    return this.goalModel.findByIdAndDelete(id).exec();
+  async remove(userId: string, id: string): Promise<Goal> {
+    return orNotFound(
+      await this.goalModel.findOneAndDelete(ownedBy(userId, id)).exec(),
+      'Goal',
+    );
   }
 
-  async removeRecurring(id: string): Promise<Goal | null> {
-    const goal = await this.findOne(id);
-    if (!goal) throw new BadRequestException('Goal not found.');
+  async removeRecurring(userId: string, id: string): Promise<Goal> {
+    return this.updateOwned(userId, id, {
+      $unset: { recurringTransaction: 1 },
+    });
+  }
 
-    return this.goalModel
-      .findByIdAndUpdate(
-        id,
-        { $unset: { recurringTransaction: 1 } },
-        { new: true },
-      )
-      .exec();
+  private async updateOwned(
+    userId: string,
+    id: string,
+    update: Record<string, unknown>,
+  ): Promise<GoalDocument> {
+    return orNotFound(
+      await this.goalModel
+        .findOneAndUpdate(ownedBy(userId, id), update, { new: true })
+        .exec(),
+      'Goal',
+    );
   }
 }

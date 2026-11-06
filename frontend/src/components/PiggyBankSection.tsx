@@ -29,7 +29,7 @@ const PiggyBankSection = ({ piggyBank, onAddMoney, userId }: PiggyBankSectionPro
   const fetchWalletTransactions = useCallback(async () => {
     try {
       if (userId) {
-        const response = await api.get(`/transactions?userId=${userId}`);
+        const response = await api.get('/transactions');
         const allTx = response.data as Transaction[];
         
         // Filter wallet-related transactions

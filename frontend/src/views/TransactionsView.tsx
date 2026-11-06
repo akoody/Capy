@@ -51,7 +51,7 @@ const TransactionsView = () => {
   const fetchTransactions = useCallback(async () => {
     try {
       if (userId) {
-        const response = await api.get(`/transactions?userId=${userId}`);
+        const response = await api.get('/transactions');
         setTransactions(response.data);
       }
     } catch (error) {
@@ -115,7 +115,6 @@ const TransactionsView = () => {
         if (wasDeductedFromWallet && userId) {
           try {
             await api.patch('/piggy-bank/deposit', {
-              userId,
               amount: transactionToDelete.amount,
             });
             // Dispatch event to update wallet balance in other views
@@ -131,7 +130,6 @@ const TransactionsView = () => {
         if (wasDepositedToWallet && userId) {
           try {
             await api.patch('/piggy-bank/withdraw', {
-              userId,
               amount: transactionToDelete.amount,
             });
             // Dispatch event to update wallet balance in other views

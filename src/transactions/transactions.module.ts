@@ -11,12 +11,15 @@ import { TransactionCategoriesService } from './transaction-categories.service';
 import { TransactionCategoriesController } from './transaction-categories.controller';
 
 import { UsersModule } from '../users/users.module';
+import { Goal, GoalSchema } from '../goals/schemas/goal.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Transaction.name, schema: TransactionSchema },
       { name: TransactionCategory.name, schema: TransactionCategorySchema },
+      // Только для проверки, что цель транзакции принадлежит тому же пользователю.
+      { name: Goal.name, schema: GoalSchema },
     ]),
     forwardRef(() => UsersModule),
   ],

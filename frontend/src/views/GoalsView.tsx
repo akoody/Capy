@@ -66,7 +66,7 @@ const GoalsView = ({ goals, userId, fetchGoals }: GoalsViewProps) => {
   const fetchPiggyBank = async () => {
     if (!userId) return;
     try {
-      const response = await api.get(`/piggy-bank?userId=${userId}`);
+      const response = await api.get('/piggy-bank');
       setPiggyBank(response.data);
     } catch (error) {
       console.error('Failed to fetch piggy bank', error);

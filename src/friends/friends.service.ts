@@ -1,60 +1,95 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { FriendRequest, FriendRequestDocument } from './schemas/friend-request.schema';
+import { isValidObjectId, Model, Types } from 'mongoose';
+import { orNotFound } from '../common/owned-by';
 import { UsersService } from '../users/users.service';
+import {
+  FriendRequest,
+  FriendRequestDocument,
+} from './schemas/friend-request.schema';
+
+/** Поля другого пользователя, которые видны в заявках в друзья. */
+const PUBLIC_USER_FIELDS = 'firstName username photoUrl';
 
 @Injectable()
-export class FriendsService implements OnModuleInit {
+export class FriendsService {
   constructor(
-    @InjectModel(FriendRequest.name) private friendRequestModel: Model<FriendRequestDocument>,
+    @InjectModel(FriendRequest.name)
+    private friendRequestModel: Model<FriendRequestDocument>,
     private readonly usersService: UsersService,
   ) {}
 
-  async onModuleInit() {
-    await this.seed();
-  }
-
-  private async seed() {
-    const count = await this.friendRequestModel.countDocuments();
-    if (count > 0) {
-      return;
+  /** Заявка всегда отправляется от имени текущего пользователя. */
+  async create(
+    requesterId: string,
+    recipientId: string,
+  ): Promise<FriendRequest> {
+    if (requesterId === recipientId) {
+      throw new BadRequestException('Cannot send a friend request to yourself');
     }
-
-    const users = await this.usersService.findAll();
-    if (users.length < 2) {
-      return;
+    if (!(await this.usersService.existsById(recipientId))) {
+      throw new NotFoundException('User not found');
     }
-
-    await this.friendRequestModel.create([
-      {
-        requester: users[0]._id,
-        recipient: users[1]._id,
-      },
-    ]);
-  }
-
-  async create(requesterId: string, recipientId: string): Promise<FriendRequest> {
-    const friendRequest = new this.friendRequestModel({ requester: requesterId, recipient: recipientId });
-    return friendRequest.save();
-  }
-
-  async accept(id: string): Promise<FriendRequest | null> {
-    const friendRequest = await this.friendRequestModel.findById(id).populate('requester').populate('recipient').exec();
-    if (friendRequest) {
-      await this.usersService.addFriend((friendRequest.requester as any)._id, (friendRequest.recipient as any)._id);
-      await this.usersService.addFriend((friendRequest.recipient as any)._id, (friendRequest.requester as any)._id);
-      friendRequest.status = 'accepted';
-      return friendRequest.save();
+    const pending = await this.friendRequestModel.exists({
+      status: 'pending',
+      $or: [
+        { requester: requesterId, recipient: recipientId },
+        { requester: recipientId, recipient: requesterId },
+      ],
+    });
+    if (pending) {
+      throw new ConflictException('Friend request already pending');
     }
-    return null;
+    return new this.friendRequestModel({
+      requester: requesterId,
+      recipient: recipientId,
+    }).save();
   }
 
-  async reject(id: string): Promise<FriendRequest | null> {
-    return this.friendRequestModel.findByIdAndUpdate(id, { status: 'rejected' }, { new: true }).exec();
+  /** Принять может только получатель и только ожидающую заявку. */
+  async accept(userId: string, id: string): Promise<FriendRequest> {
+    const request = await this.respond(userId, id, 'accepted');
+    // requester не populated: в документе лежит ObjectId.
+    const requester = (
+      request.requester as unknown as Types.ObjectId
+    ).toHexString();
+    await this.usersService.addFriend(requester, userId);
+    await this.usersService.addFriend(userId, requester);
+    return request;
+  }
+
+  async reject(userId: string, id: string): Promise<FriendRequest> {
+    return this.respond(userId, id, 'rejected');
   }
 
   async findAllForUser(userId: string): Promise<FriendRequest[]> {
-    return this.friendRequestModel.find({ $or: [{ requester: userId }, { recipient: userId }] }).populate('requester').populate('recipient').exec();
+    return this.friendRequestModel
+      .find({ $or: [{ requester: userId }, { recipient: userId }] })
+      .populate('requester', PUBLIC_USER_FIELDS)
+      .populate('recipient', PUBLIC_USER_FIELDS)
+      .exec();
+  }
+
+  private async respond(
+    userId: string,
+    id: string,
+    status: 'accepted' | 'rejected',
+  ): Promise<FriendRequestDocument> {
+    if (!isValidObjectId(id)) throw new NotFoundException();
+    return orNotFound(
+      await this.friendRequestModel
+        .findOneAndUpdate(
+          { _id: id, recipient: userId, status: 'pending' },
+          { $set: { status } },
+          { new: true },
+        )
+        .exec(),
+      'Friend request',
+    );
   }
 }

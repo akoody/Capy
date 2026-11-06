@@ -11,28 +11,19 @@ import {
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
-import { TelegramUser } from '../auth/telegram-user.decorator';
-import { UsersService } from '../users/users.service';
-import type { TelegramUserPayload } from '../auth/telegram-init-data';
+import { CurrentUserId } from '../auth/current-account';
 
 @Controller('tasks')
 export class TasksController {
   constructor(
     private readonly tasksService: TasksService,
-    private readonly usersService: UsersService,
   ) {}
-
-  private async userIdFromTelegram(telegramUser: TelegramUserPayload): Promise<string> {
-    const user = await this.usersService.findOrCreateByTelegramUser(telegramUser);
-    return user._id.toString();
-  }
 
   @Get()
   async list(
-    @TelegramUser() telegramUser: TelegramUserPayload,
+    @CurrentUserId() userId: string,
     @Query('status') status?: 'open' | 'done' | 'cancelled' | 'all',
   ) {
-    const userId = await this.userIdFromTelegram(telegramUser);
     const st = status ?? 'all';
     const allowed = ['open', 'done', 'cancelled', 'all'] as const;
     const safe = allowed.includes(st as (typeof allowed)[number])
@@ -43,38 +34,34 @@ export class TasksController {
 
   @Post()
   async create(
-    @TelegramUser() telegramUser: TelegramUserPayload,
+    @CurrentUserId() userId: string,
     @Body() dto: CreateTaskDto,
   ) {
-    const userId = await this.userIdFromTelegram(telegramUser);
     return this.tasksService.create(userId, dto);
   }
 
   @Patch(':id')
   async update(
-    @TelegramUser() telegramUser: TelegramUserPayload,
+    @CurrentUserId() userId: string,
     @Param('id') id: string,
     @Body() dto: UpdateTaskDto,
   ) {
-    const userId = await this.userIdFromTelegram(telegramUser);
     return this.tasksService.update(userId, id, dto);
   }
 
   @Post(':id/complete')
   async complete(
-    @TelegramUser() telegramUser: TelegramUserPayload,
+    @CurrentUserId() userId: string,
     @Param('id') id: string,
   ) {
-    const userId = await this.userIdFromTelegram(telegramUser);
     return this.tasksService.complete(userId, id);
   }
 
   @Delete(':id')
   async remove(
-    @TelegramUser() telegramUser: TelegramUserPayload,
+    @CurrentUserId() userId: string,
     @Param('id') id: string,
   ) {
-    const userId = await this.userIdFromTelegram(telegramUser);
     await this.tasksService.remove(userId, id);
     return { ok: true };
   }

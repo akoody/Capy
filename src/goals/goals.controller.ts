@@ -1,81 +1,86 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
+  Controller,
+  Delete,
+  Get,
   Param,
   Patch,
-  Delete,
-  Query,
+  Post,
 } from '@nestjs/common';
-import { GoalsService } from './goals.service';
+import { CurrentUserId } from '../auth/current-account';
 import { CreateGoalDto } from './dto/create-goal.dto';
-import { UpdateGoalAmountDto } from './dto/update-goal-amount.dto';
 import { SetupRecurringTransactionDto } from './dto/setup-recurring-transaction.dto';
+import { UpdateGoalAmountDto } from './dto/update-goal-amount.dto';
+import { UpdateGoalNotesDto } from './dto/update-goal-notes.dto';
+import { GoalsService } from './goals.service';
 
 @Controller('goals')
 export class GoalsController {
   constructor(private readonly goalsService: GoalsService) {}
 
   @Post()
-  create(@Body() createGoalDto: CreateGoalDto) {
-    return this.goalsService.create(createGoalDto);
+  create(@CurrentUserId() userId: string, @Body() dto: CreateGoalDto) {
+    return this.goalsService.create(userId, dto);
   }
 
   @Get()
-  findAll(@Query('userId') userId: string) {
+  findAll(@CurrentUserId() userId: string) {
     return this.goalsService.findAllForUser(userId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.goalsService.findOne(id);
+  findOne(@CurrentUserId() userId: string, @Param('id') id: string) {
+    return this.goalsService.findOne(userId, id);
   }
 
   @Patch(':id/deposit')
   deposit(
+    @CurrentUserId() userId: string,
     @Param('id') id: string,
-    @Body() updateGoalAmountDto: UpdateGoalAmountDto,
+    @Body() dto: UpdateGoalAmountDto,
   ) {
-    return this.goalsService.deposit(id, updateGoalAmountDto);
+    return this.goalsService.deposit(userId, id, dto);
   }
 
   @Patch(':id/withdraw')
   withdraw(
+    @CurrentUserId() userId: string,
     @Param('id') id: string,
-    @Body() updateGoalAmountDto: UpdateGoalAmountDto,
+    @Body() dto: UpdateGoalAmountDto,
   ) {
-    return this.goalsService.withdraw(id, updateGoalAmountDto);
+    return this.goalsService.withdraw(userId, id, dto);
   }
 
   @Patch(':id/recurring')
   setupRecurringTransaction(
+    @CurrentUserId() userId: string,
     @Param('id') id: string,
-    @Body() setupRecurringTransactionDto: SetupRecurringTransactionDto,
+    @Body() dto: SetupRecurringTransactionDto,
   ) {
-    return this.goalsService.setupRecurringTransaction(
-      id,
-      setupRecurringTransactionDto,
-    );
+    return this.goalsService.setupRecurringTransaction(userId, id, dto);
   }
 
   @Patch(':id/restore')
-  restore(@Param('id') id: string) {
-    return this.goalsService.restore(id);
+  restore(@CurrentUserId() userId: string, @Param('id') id: string) {
+    return this.goalsService.restore(userId, id);
   }
 
   @Patch(':id/notes')
-  updateNotes(@Param('id') id: string, @Body() body: { notes: string }) {
-    return this.goalsService.updateNotes(id, body.notes);
+  updateNotes(
+    @CurrentUserId() userId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateGoalNotesDto,
+  ) {
+    return this.goalsService.updateNotes(userId, id, dto.notes);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.goalsService.remove(id);
+  remove(@CurrentUserId() userId: string, @Param('id') id: string) {
+    return this.goalsService.remove(userId, id);
   }
 
   @Delete(':id/recurring')
-  removeRecurring(@Param('id') id: string) {
-    return this.goalsService.removeRecurring(id);
+  removeRecurring(@CurrentUserId() userId: string, @Param('id') id: string) {
+    return this.goalsService.removeRecurring(userId, id);
   }
 }

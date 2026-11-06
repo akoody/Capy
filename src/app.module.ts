@@ -15,6 +15,8 @@ import { GamificationModule } from './gamification/gamification.module';
 import { FriendsModule } from './friends/friends.module';
 import { PiggyBankModule } from './piggy-bank/piggy-bank.module';
 import { TelegramAuthGuard } from './auth/telegram-auth.guard';
+import { ACCOUNT_RESOLVER } from './auth/current-account';
+import { UsersService } from './users/users.service';
 import { AuthModule } from './auth/auth.module';
 import { JournalModule } from './journal/journal.module';
 import { AssistantModule } from './assistant/assistant.module';
@@ -49,6 +51,9 @@ import { TasksModule } from './tasks/tasks.module';
     AssistantModule,
     TasksModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: TelegramAuthGuard }],
+  providers: [
+    { provide: ACCOUNT_RESOLVER, useExisting: UsersService },
+    { provide: APP_GUARD, useClass: TelegramAuthGuard },
+  ],
 })
 export class AppModule {}

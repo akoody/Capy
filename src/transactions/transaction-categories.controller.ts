@@ -10,54 +10,42 @@ import {
 import { TransactionCategoriesService } from './transaction-categories.service';
 import { CreateTransactionCategoryDto } from './dto/create-transaction-category.dto';
 import { UpdateTransactionCategoryDto } from './dto/update-transaction-category.dto';
-import { TelegramUser } from '../auth/telegram-user.decorator';
-import { UsersService } from '../users/users.service';
-import type { TelegramUserPayload } from '../auth/telegram-init-data';
+import { CurrentUserId } from '../auth/current-account';
 
 @Controller('transaction-categories')
 export class TransactionCategoriesController {
   constructor(
     private readonly categoriesService: TransactionCategoriesService,
-    private readonly usersService: UsersService,
   ) {}
 
-  private async userId(telegramUser: TelegramUserPayload): Promise<string> {
-    const user = await this.usersService.findOrCreateByTelegramUser(telegramUser);
-    return user._id.toString();
-  }
-
   @Get()
-  async list(@TelegramUser() telegramUser: TelegramUserPayload) {
-    const uid = await this.userId(telegramUser);
-    return this.categoriesService.findAllForUser(uid);
+  async list(@CurrentUserId() userId: string) {
+    return this.categoriesService.findAllForUser(userId);
   }
 
   @Post()
   async create(
-    @TelegramUser() telegramUser: TelegramUserPayload,
+    @CurrentUserId() userId: string,
     @Body() dto: CreateTransactionCategoryDto,
   ) {
-    const uid = await this.userId(telegramUser);
-    return this.categoriesService.create(uid, dto);
+    return this.categoriesService.create(userId, dto);
   }
 
   @Patch(':id')
   async update(
-    @TelegramUser() telegramUser: TelegramUserPayload,
+    @CurrentUserId() userId: string,
     @Param('id') id: string,
     @Body() dto: UpdateTransactionCategoryDto,
   ) {
-    const uid = await this.userId(telegramUser);
-    return this.categoriesService.update(uid, id, dto);
+    return this.categoriesService.update(userId, id, dto);
   }
 
   @Delete(':id')
   async remove(
-    @TelegramUser() telegramUser: TelegramUserPayload,
+    @CurrentUserId() userId: string,
     @Param('id') id: string,
   ) {
-    const uid = await this.userId(telegramUser);
-    await this.categoriesService.remove(uid, id);
+    await this.categoriesService.remove(userId, id);
     return { ok: true };
   }
 }

@@ -10,9 +10,8 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AssistantService } from './assistant.service';
-import { TelegramUser } from '../auth/telegram-user.decorator';
+import { CurrentUserId } from '../auth/current-account';
 import type { UploadedAudioFile } from './uploaded-audio-file';
-import type { TelegramUserPayload } from '../auth/telegram-init-data';
 
 @Controller('assistant')
 export class AssistantController {
@@ -28,13 +27,13 @@ export class AssistantController {
   )
   async voice(
     @UploadedFile() file: UploadedAudioFile,
-    @TelegramUser() telegramUser: TelegramUserPayload,
+    @CurrentUserId() userId: string,
   ) {
     if (!file?.buffer?.length) {
       throw new BadRequestException('Загрузите аудиофайл в поле audio');
     }
     try {
-      return await this.assistantService.processVoiceCommand(file, telegramUser);
+      return await this.assistantService.processVoiceCommand(file, userId);
     } catch (err: unknown) {
       const status =
         err instanceof HttpException
