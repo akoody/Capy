@@ -12,9 +12,11 @@ import { TransactionCategoriesController } from './transaction-categories.contro
 
 import { UsersModule } from '../users/users.module';
 import { Goal, GoalSchema } from '../goals/schemas/goal.schema';
+import { LlmModule } from '../llm/llm.module';
 
 @Module({
   imports: [
+    LlmModule,
     MongooseModule.forFeature([
       { name: Transaction.name, schema: TransactionSchema },
       { name: TransactionCategory.name, schema: TransactionCategorySchema },

@@ -5,9 +5,11 @@ import { PiggyBankController } from './piggy-bank.controller';
 import { PiggyBankService } from './piggy-bank.service';
 import { UsersModule } from '../users/users.module';
 import { TransactionsModule } from '../transactions/transactions.module';
+import { LlmModule } from '../llm/llm.module';
 
 @Module({
   imports: [
+    LlmModule,
     MongooseModule.forFeature([
       { name: PiggyBank.name, schema: PiggyBankSchema },
     ]),

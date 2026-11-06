@@ -58,6 +58,8 @@ export const appEnvSchema = seederEnvSchema.extend({
   OPENAI_TRANSCRIPTION_MODEL: optionalSecret(),
   OPENAI_INTERPRET_MODEL: optionalSecret(),
   GIGACHAT_API_KEY: optionalSecret(),
+  /** PEM корневого сертификата Минцифры для проверки TLS GigaChat. */
+  GIGACHAT_CA_CERT_PATH: optionalSecret(),
   GEMINI_API_KEY: optionalSecret(),
   DEEPSEEK_API_KEY: optionalSecret(),
   GROQ_API_KEY: optionalSecret(),

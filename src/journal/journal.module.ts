@@ -7,9 +7,11 @@ import {
 import { JournalController } from './journal.controller';
 import { JournalService } from './journal.service';
 import { UsersModule } from '../users/users.module';
+import { LlmModule } from '../llm/llm.module';
 
 @Module({
   imports: [
+    LlmModule,
     MongooseModule.forFeature([
       { name: JournalEntry.name, schema: JournalEntrySchema },
     ]),
