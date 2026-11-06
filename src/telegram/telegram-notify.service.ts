@@ -10,7 +10,9 @@ export class TelegramNotifyService {
   async sendMessage(telegramId: number, text: string): Promise<boolean> {
     const token = normalizeEnvSecret(process.env.TELEGRAM_BOT_TOKEN);
     if (!token) {
-      this.logger.warn('TELEGRAM_BOT_TOKEN не задан — напоминание не отправлено');
+      this.logger.warn(
+        'TELEGRAM_BOT_TOKEN не задан — напоминание не отправлено',
+      );
       return false;
     }
     const url = `https://api.telegram.org/bot${token}/sendMessage`;

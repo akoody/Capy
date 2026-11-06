@@ -26,4 +26,3 @@ export class JournalEntry {
 }
 
 export const JournalEntrySchema = SchemaFactory.createForClass(JournalEntry);
-

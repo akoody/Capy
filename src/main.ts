@@ -45,6 +45,8 @@ async function bootstrap() {
   );
   const port = config.get('PORT', { infer: true });
   await app.listen(port);
-  console.log(`NestJS backend (MongoDB) is running on http://localhost:${port}`);
+  console.log(
+    `NestJS backend (MongoDB) is running on http://localhost:${port}`,
+  );
 }
 void bootstrap();

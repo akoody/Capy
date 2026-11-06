@@ -21,7 +21,7 @@ import {
 import type { UploadedAudioFile } from './uploaded-audio-file';
 import { normalizeAudioForWhisper } from './normalize-audio-for-whisper';
 import { normalizeEnvSecret } from '../env-secrets';
-import "dotenv/config";
+import 'dotenv/config';
 
 @Injectable()
 export class AssistantService {
@@ -168,15 +168,18 @@ export class AssistantService {
           message?: string;
         };
         const errMsg =
-          e?.response?.data?.message || e?.message || 'Не удалось выполнить команду';
-        const short =
-          typeof errMsg === 'string' ? errMsg : 'Ошибка выполнения';
+          e?.response?.data?.message ||
+          e?.message ||
+          'Не удалось выполнить команду';
+        const short = typeof errMsg === 'string' ? errMsg : 'Ошибка выполнения';
         parts.push(`Не записано (${this.opShortLabel(op)}): ${short}`);
         lastError = short;
       }
     }
 
-    const successCount = parts.filter((p) => !p.startsWith('Не записано')).length;
+    const successCount = parts.filter(
+      (p) => !p.startsWith('Не записано'),
+    ).length;
     const allOk = successCount === ready.length;
 
     let message: string;
@@ -547,7 +550,9 @@ export class AssistantService {
     );
 
     if (response.status === 401 || response.status === 403) {
-      throw new BadRequestException('Ошибка авторизации Groq (проверьте GROQ_API_KEY)');
+      throw new BadRequestException(
+        'Ошибка авторизации Groq (проверьте GROQ_API_KEY)',
+      );
     }
     if (response.status !== 200) {
       throw new BadRequestException(
@@ -600,7 +605,10 @@ export class AssistantService {
 
     const openTaskTitles = await this.tasksService.findOpenTitles(userId, 25);
     const goals = await this.goalsService.findAllForUser(userId);
-    const goalTitles = goals.map((g) => g.name).filter(Boolean).slice(0, 40);
+    const goalTitles = goals
+      .map((g) => g.name)
+      .filter(Boolean)
+      .slice(0, 40);
     const categoryCatalog =
       await this.transactionCategoriesService.listForVoiceContext(userId, 60);
     return {
@@ -639,7 +647,9 @@ export class AssistantService {
                   : c.kind === 'income'
                     ? 'только доход'
                     : 'расход и доход';
-              const hint = c.description ? ` | подсказка: ${c.description}` : '';
+              const hint = c.description
+                ? ` | подсказка: ${c.description}`
+                : '';
               return `«${c.name}» (${kindRu})${hint}`;
             })
             .join('\n')
@@ -883,10 +893,7 @@ ${catLine}
       ? (intentRaw as VoiceIntent)
       : 'unknown';
 
-    const confidence = Math.min(
-      1,
-      Math.max(0, Number(data.confidence) || 0),
-    );
+    const confidence = Math.min(1, Math.max(0, Number(data.confidence) || 0));
     let amount: number | null =
       typeof data.amount === 'number' && !Number.isNaN(data.amount)
         ? data.amount
@@ -966,8 +973,7 @@ ${catLine}
         ? String(data.budget_name).trim()
         : null;
     const bp = data.budget_period;
-    const budget_period =
-      bp === 'weekly' || bp === 'monthly' ? bp : null;
+    const budget_period = bp === 'weekly' || bp === 'monthly' ? bp : null;
 
     const ck = data.category_kind;
     const category_kind =
@@ -1062,9 +1068,7 @@ ${catLine}
     if (data && typeof data === 'object' && data !== null) {
       const obj = data as Record<string, unknown>;
       const batch_reply_hint =
-        obj.batch_reply_hint != null
-          ? String(obj.batch_reply_hint).trim()
-          : '';
+        obj.batch_reply_hint != null ? String(obj.batch_reply_hint).trim() : '';
 
       const opsRaw = obj.operations ?? obj.items;
       if (Array.isArray(opsRaw)) {
@@ -1133,7 +1137,13 @@ ${catLine}
       category?: string;
       description?: string;
     },
-  ): Promise<{ _id: { toString: () => string }; amount: number; type: string; category: string; description?: string } | null> {
+  ): Promise<{
+    _id: { toString: () => string };
+    amount: number;
+    type: string;
+    category: string;
+    description?: string;
+  } | null> {
     const all = await this.transactionsService.findAllForUser(userId);
     const lines = all.filter(
       (tx) => tx.type === 'expense' || tx.type === 'income',
@@ -1212,9 +1222,7 @@ ${catLine}
       const pig = await this.piggyBankService.findOneByUser(userMongoId);
       const bal = pig?.amount ?? 0;
       return {
-        message:
-          p.reply_hint?.trim() ||
-          `На кошельке ${bal} ${cur}`,
+        message: p.reply_hint?.trim() || `На кошельке ${bal} ${cur}`,
       };
     }
 
@@ -1481,12 +1489,11 @@ ${catLine}
     }
 
     if (p.intent === 'create_expense') {
-      const category =
-        await this.transactionCategoriesService.resolveForVoice(
-          userMongoId,
-          'expense',
-          p.category,
-        );
+      const category = await this.transactionCategoriesService.resolveForVoice(
+        userMongoId,
+        'expense',
+        p.category,
+      );
       let desc = p.description || '';
       if (p.affect_wallet) {
         desc = `${desc ? desc + ' ' : ''}(списано с кошелька)`;
@@ -1515,12 +1522,11 @@ ${catLine}
     }
 
     if (p.intent === 'create_income') {
-      const category =
-        await this.transactionCategoriesService.resolveForVoice(
-          userMongoId,
-          'income',
-          p.category,
-        );
+      const category = await this.transactionCategoriesService.resolveForVoice(
+        userMongoId,
+        'income',
+        p.category,
+      );
       let desc = p.description || '';
       if (p.affect_wallet) {
         desc = `${desc ? desc + ' ' : ''}(пополнено в кошелек)`;

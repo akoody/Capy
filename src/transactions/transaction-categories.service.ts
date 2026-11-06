@@ -35,9 +35,7 @@ export class TransactionCategoriesService {
   async listForVoiceContext(
     userId: string,
     limit = 50,
-  ): Promise<
-    { name: string; kind: string; description: string | null }[]
-  > {
+  ): Promise<{ name: string; kind: string; description: string | null }[]> {
     const rows = await this.categoryModel
       .find({ user: new Types.ObjectId(userId), archived: false })
       .select('name kind description')

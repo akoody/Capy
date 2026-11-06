@@ -8,7 +8,9 @@ import { TransactionsModule } from '../transactions/transactions.module';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: PiggyBank.name, schema: PiggyBankSchema }]),
+    MongooseModule.forFeature([
+      { name: PiggyBank.name, schema: PiggyBankSchema },
+    ]),
     UsersModule,
     forwardRef(() => TransactionsModule),
   ],

@@ -2,8 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
 import { User } from '../../users/schemas/user.schema';
 
-export type TransactionCategoryDocument =
-  HydratedDocument<TransactionCategory>;
+export type TransactionCategoryDocument = HydratedDocument<TransactionCategory>;
 
 @Schema({ timestamps: true })
 export class TransactionCategory {
@@ -14,7 +13,11 @@ export class TransactionCategory {
   name: string;
 
   /** К каким операциям относится: расход, доход или оба варианта. */
-  @Prop({ required: true, enum: ['expense', 'income', 'both'], default: 'both' })
+  @Prop({
+    required: true,
+    enum: ['expense', 'income', 'both'],
+    default: 'both',
+  })
   kind: 'expense' | 'income' | 'both';
 
   /** Подсказка для голоса и ИИ: синонимы, что сюда относить. */

@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Task, TaskDocument } from './schemas/task.schema';
@@ -47,10 +51,7 @@ export class TasksService {
     if (status !== 'all') {
       q.status = status;
     }
-    return this.taskModel
-      .find(q)
-      .sort({ dueAt: 1, createdAt: -1 })
-      .exec();
+    return this.taskModel.find(q).sort({ dueAt: 1, createdAt: -1 }).exec();
   }
 
   async findOpenTitles(userId: string, limit = 30): Promise<string[]> {
@@ -73,11 +74,7 @@ export class TasksService {
     return task;
   }
 
-  async update(
-    userId: string,
-    id: string,
-    dto: UpdateTaskDto,
-  ): Promise<Task> {
+  async update(userId: string, id: string, dto: UpdateTaskDto): Promise<Task> {
     const task = await this.findOneForUser(userId, id);
     if (dto.title != null) task.title = dto.title.trim();
     if (dto.description !== undefined) {
@@ -136,7 +133,8 @@ export class TasksService {
     return (
       open.find(
         (t) =>
-          t.title.toLowerCase().includes(q) || q.includes(t.title.toLowerCase()),
+          t.title.toLowerCase().includes(q) ||
+          q.includes(t.title.toLowerCase()),
       ) ?? null
     );
   }
@@ -147,7 +145,12 @@ export class TasksService {
     const tasks = await this.taskModel
       .find({
         status: 'open',
-        reminders: { $elemMatch: { fireAt: { $lte: new Date() }, sentAt: { $exists: false } } },
+        reminders: {
+          $elemMatch: {
+            fireAt: { $lte: new Date() },
+            sentAt: { $exists: false },
+          },
+        },
       })
       .populate<{ user: UserDocument }>('user')
       .exec();
@@ -164,7 +167,11 @@ export class TasksService {
         if (r.sentAt) continue;
         if (r.fireAt > now) continue;
         const pri =
-          task.priority === 'high' ? '🔴' : task.priority === 'low' ? '⚪' : '🟡';
+          task.priority === 'high'
+            ? '🔴'
+            : task.priority === 'low'
+              ? '⚪'
+              : '🟡';
         const dueLine = task.dueAt
           ? `\nСрок: ${task.dueAt.toISOString().slice(0, 10)}`
           : '';

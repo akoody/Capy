@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { PiggyBank, PiggyBankDocument } from './schemas/piggy-bank.schema';
@@ -11,7 +16,8 @@ import * as crypto from 'crypto';
 @Injectable()
 export class PiggyBankService {
   constructor(
-    @InjectModel(PiggyBank.name) private piggyBankModel: Model<PiggyBankDocument>,
+    @InjectModel(PiggyBank.name)
+    private piggyBankModel: Model<PiggyBankDocument>,
     private readonly usersService: UsersService,
     @Inject(forwardRef(() => TransactionsService))
     private readonly transactionsService: TransactionsService,
@@ -46,7 +52,7 @@ export class PiggyBankService {
 
   async analyzeSavings(userId: string): Promise<string> {
     await this.usersService.checkAnalysisLimit(userId, 'savings');
-    
+
     let user;
     if (userId.match(/^[0-9a-fA-F]{24}$/)) {
       user = await this.usersService.findById(userId);
@@ -54,27 +60,40 @@ export class PiggyBankService {
       user = await this.usersService.findOneByTelegramId(parseInt(userId, 10));
     }
     const currency = user?.currency || 'USD';
-    
+
     const piggyBank = await this.findOneByUser(userId);
-    const allTransactions = await this.transactionsService.findAllForUser(userId);
-    
+    const allTransactions =
+      await this.transactionsService.findAllForUser(userId);
+
     const savingsTransactions = allTransactions.filter((tx) => {
       if ((tx.type === 'deposit' || tx.type === 'withdraw') && !tx.goal) {
         return true;
       }
       if (tx.type === 'expense' && !tx.goal) {
         const desc = (tx.description || '').toLowerCase();
-        return desc.includes('кошел') || desc.includes('wallet') || desc.includes('списано с кошелька');
+        return (
+          desc.includes('кошел') ||
+          desc.includes('wallet') ||
+          desc.includes('списано с кошелька')
+        );
       }
       if (tx.type === 'income' && !tx.goal) {
         const desc = (tx.description || '').toLowerCase();
-        return desc.includes('пополнено в кошелек') || desc.includes('deposited to wallet');
+        return (
+          desc.includes('пополнено в кошелек') ||
+          desc.includes('deposited to wallet')
+        );
       }
       return false;
     });
 
-    if (savingsTransactions.length === 0 && (!piggyBank || piggyBank.amount === 0)) {
-      throw new BadRequestException('Недостаточно данных для анализа накоплений. Добавьте транзакции или пополнения.');
+    if (
+      savingsTransactions.length === 0 &&
+      (!piggyBank || piggyBank.amount === 0)
+    ) {
+      throw new BadRequestException(
+        'Недостаточно данных для анализа накоплений. Добавьте транзакции или пополнения.',
+      );
     }
 
     await this.usersService.recordAnalysisRequest(userId, 'savings');
@@ -82,17 +101,28 @@ export class PiggyBankService {
     const transactionsText = savingsTransactions
       .map((tx, index) => {
         const date = new Date(tx.date).toLocaleDateString('ru-RU');
-        const typeText = tx.type === 'deposit' ? 'Пополнение' : tx.type === 'withdraw' ? 'Снятие' : tx.type === 'income' ? 'Доход' : 'Расход';
+        const typeText =
+          tx.type === 'deposit'
+            ? 'Пополнение'
+            : tx.type === 'withdraw'
+              ? 'Снятие'
+              : tx.type === 'income'
+                ? 'Доход'
+                : 'Расход';
         return `Транзакция ${index + 1} (${date}):\nТип: ${typeText}\nСумма: ${tx.amount}\nКатегория: ${tx.category}\n${tx.description ? `Описание: ${tx.description}` : ''}`;
       })
       .join('\n\n---\n\n');
 
     const currentBalance = piggyBank?.amount || 0;
     const totalDeposits = savingsTransactions
-      .filter(tx => tx.type === 'deposit' || (tx.type === 'income' && !tx.goal))
+      .filter(
+        (tx) => tx.type === 'deposit' || (tx.type === 'income' && !tx.goal),
+      )
       .reduce((sum, tx) => sum + tx.amount, 0);
     const totalWithdrawals = savingsTransactions
-      .filter(tx => tx.type === 'withdraw' || (tx.type === 'expense' && !tx.goal))
+      .filter(
+        (tx) => tx.type === 'withdraw' || (tx.type === 'expense' && !tx.goal),
+      )
       .reduce((sum, tx) => sum + tx.amount, 0);
 
     const isRussian = true;
@@ -137,13 +167,13 @@ CRITICAL - RESPONSE FORMAT:
 - Format: brief analysis (2-3 paragraphs), then empty line, then "RECOMMENDATIONS:" and numbered list (1., 2., 3.)`;
 
     const currencyNames: Record<string, string> = {
-      'USD': 'долларов США',
-      'EUR': 'евро',
-      'RUB': 'рублей',
-      'GBP': 'фунтов стерлингов',
+      USD: 'долларов США',
+      EUR: 'евро',
+      RUB: 'рублей',
+      GBP: 'фунтов стерлингов',
     };
     const currencyName = currencyNames[currency] || currency;
-    
+
     const userMessage = isRussian
       ? `Вот все данные о накоплениях пользователя:
 
@@ -173,7 +203,10 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
     try {
       return await this.analyzeWithGigaChat(userMessage, systemMessage);
     } catch (gigaError: any) {
-      if (gigaError?.response?.status === 401 || gigaError?.response?.status === 403) {
+      if (
+        gigaError?.response?.status === 401 ||
+        gigaError?.response?.status === 403
+      ) {
         (this as any)._gigachatToken = null;
         (this as any)._gigachatTokenExpiry = null;
       }
@@ -182,7 +215,7 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
         data: gigaError?.response?.data,
         message: gigaError?.message,
       });
-      
+
       try {
         return await this.analyzeWithGemini(userMessage, systemMessage);
       } catch (geminiError: any) {
@@ -191,21 +224,21 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
           data: geminiError?.response?.data,
           message: geminiError?.message,
         });
-        
+
         try {
           return await this.analyzeWithDeepSeek(userMessage, systemMessage);
         } catch (deepseekError: any) {
           console.warn('DeepSeek API error:', deepseekError?.response?.status);
-          
+
           try {
             return await this.analyzeWithGroq(userMessage, systemMessage);
           } catch (groqError: any) {
             console.error('All AI APIs failed');
-            
+
             const errorMessage = isRussian
               ? 'Не удалось проанализировать накопления. Все AI сервисы недоступны. Пожалуйста, проверьте настройки API ключей или попробуйте позже.'
               : 'Failed to analyze savings. All AI services are unavailable. Please check API key settings or try again later.';
-            
+
             throw new BadRequestException(errorMessage);
           }
         }
@@ -215,7 +248,7 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
 
   private async analyzeWithGroq(
     userMessage: string,
-    systemMessage: string
+    systemMessage: string,
   ): Promise<string> {
     const groqApiKey = process.env.GROQ_API_KEY;
     if (!groqApiKey) {
@@ -240,11 +273,13 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
         },
         timeout: 30000,
         validateStatus: (status) => status < 500,
-      }
+      },
     );
 
     if (response.status === 403 || response.status === 401) {
-      const error = new Error(`Groq API authentication failed: ${response.status}`);
+      const error = new Error(
+        `Groq API authentication failed: ${response.status}`,
+      );
       (error as any).response = response;
       throw error;
     }
@@ -260,7 +295,7 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
 
   private async analyzeWithGemini(
     userMessage: string,
-    systemMessage: string
+    systemMessage: string,
   ): Promise<string> {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -294,7 +329,7 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
             'Content-Type': 'application/json',
           },
           timeout: 60000,
-        }
+        },
       );
 
       const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -309,13 +344,18 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
         throw new Error(`Gemini API error: ${errorMsg}`);
       }
       if (error.response?.status === 403 || error.response?.status === 401) {
-        throw new Error('Gemini API authentication failed. Check your API key.');
+        throw new Error(
+          'Gemini API authentication failed. Check your API key.',
+        );
       }
       throw error;
     }
   }
 
-  private prepareGigaChatMessages(message: string, systemPrompt?: string): Array<{ role: string; content: string }> {
+  private prepareGigaChatMessages(
+    message: string,
+    systemPrompt?: string,
+  ): Array<{ role: string; content: string }> {
     const messages: Array<{ role: string; content: string }> = [];
     if (systemPrompt) {
       messages.push({ role: 'system', content: systemPrompt });
@@ -347,18 +387,18 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
         'scope=GIGACHAT_API_PERS',
         {
           headers: {
-            'Authorization': `Basic ${encodedKey}`,
+            Authorization: `Basic ${encodedKey}`,
             'Content-Type': 'application/x-www-form-urlencoded',
-            'Accept': 'application/json',
-            'RqUID': crypto.randomUUID(),
+            Accept: 'application/json',
+            RqUID: crypto.randomUUID(),
           },
           timeout: 30000,
           httpsAgent: agent,
-        }
+        },
       );
 
       accessToken = response.data.access_token;
-      tokenExpiry = Date.now() + (response.data.expires_in * 1000) - 60000;
+      tokenExpiry = Date.now() + response.data.expires_in * 1000 - 60000;
       (this as any)._gigachatToken = accessToken;
       (this as any)._gigachatTokenExpiry = tokenExpiry;
 
@@ -369,13 +409,15 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
         data: error.response?.data,
         message: error.message,
       });
-      throw new Error(`Failed to get GigaChat access token: ${error.response?.data?.message || error.message}`);
+      throw new Error(
+        `Failed to get GigaChat access token: ${error.response?.data?.message || error.message}`,
+      );
     }
   }
 
   private async analyzeWithGigaChat(
     userMessage: string,
-    systemMessage: string
+    systemMessage: string,
   ): Promise<string> {
     const apiKey = process.env.GIGACHAT_API_KEY;
     if (!apiKey) {
@@ -402,12 +444,12 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
         },
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
+            Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
           timeout: 180000,
           httpsAgent: agent,
-        }
+        },
       );
 
       return response.data.choices[0].message.content.trim();
@@ -422,7 +464,7 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
 
   private async analyzeWithDeepSeek(
     userMessage: string,
-    systemMessage: string
+    systemMessage: string,
   ): Promise<string> {
     const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
     if (!deepseekApiKey) {
@@ -447,7 +489,7 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
         },
         timeout: 30000,
         validateStatus: (status) => status < 500,
-      }
+      },
     );
 
     if (response.status === 402) {

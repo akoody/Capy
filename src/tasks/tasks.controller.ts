@@ -15,9 +15,7 @@ import { CurrentUserId } from '../auth/current-account';
 
 @Controller('tasks')
 export class TasksController {
-  constructor(
-    private readonly tasksService: TasksService,
-  ) {}
+  constructor(private readonly tasksService: TasksService) {}
 
   @Get()
   async list(
@@ -26,17 +24,12 @@ export class TasksController {
   ) {
     const st = status ?? 'all';
     const allowed = ['open', 'done', 'cancelled', 'all'] as const;
-    const safe = allowed.includes(st as (typeof allowed)[number])
-      ? st
-      : 'all';
+    const safe = allowed.includes(st as (typeof allowed)[number]) ? st : 'all';
     return this.tasksService.findAllForUser(userId, safe);
   }
 
   @Post()
-  async create(
-    @CurrentUserId() userId: string,
-    @Body() dto: CreateTaskDto,
-  ) {
+  async create(@CurrentUserId() userId: string, @Body() dto: CreateTaskDto) {
     return this.tasksService.create(userId, dto);
   }
 
@@ -50,18 +43,12 @@ export class TasksController {
   }
 
   @Post(':id/complete')
-  async complete(
-    @CurrentUserId() userId: string,
-    @Param('id') id: string,
-  ) {
+  async complete(@CurrentUserId() userId: string, @Param('id') id: string) {
     return this.tasksService.complete(userId, id);
   }
 
   @Delete(':id')
-  async remove(
-    @CurrentUserId() userId: string,
-    @Param('id') id: string,
-  ) {
+  async remove(@CurrentUserId() userId: string, @Param('id') id: string) {
     await this.tasksService.remove(userId, id);
     return { ok: true };
   }

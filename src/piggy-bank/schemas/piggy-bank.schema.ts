@@ -6,7 +6,12 @@ export type PiggyBankDocument = HydratedDocument<PiggyBank>;
 
 @Schema({ timestamps: true })
 export class PiggyBank {
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true, unique: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    unique: true,
+  })
   user: User;
 
   @Prop({ default: 0 })

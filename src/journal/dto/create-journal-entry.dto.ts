@@ -18,4 +18,3 @@ export class CreateJournalEntryDto {
   @IsOptional()
   readonly date?: string | Date;
 }
-

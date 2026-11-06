@@ -2,7 +2,9 @@
  * Чистка значений из .env / process.env: пробелы, BOM, лишние кавычки.
  * Иначе Bearer-токен уходит с мусором → 401 у OpenAI.
  */
-export function normalizeEnvSecret(value: string | undefined): string | undefined {
+export function normalizeEnvSecret(
+  value: string | undefined,
+): string | undefined {
   if (value === undefined || value === null) {
     return undefined;
   }

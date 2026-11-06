@@ -1,7 +1,10 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from './schemas/user.schema';
-import { AnalysisRequest, AnalysisRequestSchema } from './schemas/analysis-request.schema';
+import {
+  AnalysisRequest,
+  AnalysisRequestSchema,
+} from './schemas/analysis-request.schema';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { AchievementsModule } from '../achievements/achievements.module';

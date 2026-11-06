@@ -17,4 +17,3 @@ export class UpdateJournalEntryDto {
   @IsOptional()
   readonly date?: Date;
 }
-

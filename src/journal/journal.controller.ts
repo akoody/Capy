@@ -14,9 +14,7 @@ import { CurrentUserId } from '../auth/current-account';
 
 @Controller('journal')
 export class JournalController {
-  constructor(
-    private readonly journalService: JournalService,
-  ) {}
+  constructor(private readonly journalService: JournalService) {}
 
   @Post()
   async create(
@@ -24,16 +22,15 @@ export class JournalController {
     @CurrentUserId() userId: string,
   ) {
     try {
-      
       const entryData: any = {
         ...createJournalEntryDto,
         userId,
       };
-      
+
       if (entryData.date && typeof entryData.date === 'string') {
         entryData.date = new Date(entryData.date);
       }
-      
+
       return this.journalService.create(entryData);
     } catch (error) {
       console.error('Error creating journal entry:', error);
@@ -47,10 +44,7 @@ export class JournalController {
   }
 
   @Get(':id')
-  async findOne(
-    @Param('id') id: string,
-    @CurrentUserId() userId: string,
-  ) {
+  async findOne(@Param('id') id: string, @CurrentUserId() userId: string) {
     return this.journalService.findOne(id, userId);
   }
 
@@ -60,20 +54,16 @@ export class JournalController {
     @CurrentUserId() userId: string,
     @Body() updateJournalEntryDto: UpdateJournalEntryDto,
   ) {
-    
     const updateData: any = { ...updateJournalEntryDto };
     if (updateData.date && typeof updateData.date === 'string') {
       updateData.date = new Date(updateData.date);
     }
-    
+
     return this.journalService.update(id, userId, updateData);
   }
 
   @Delete(':id')
-  async remove(
-    @Param('id') id: string,
-    @CurrentUserId() userId: string,
-  ) {
+  async remove(@Param('id') id: string, @CurrentUserId() userId: string) {
     return this.journalService.remove(id, userId);
   }
 
@@ -83,4 +73,3 @@ export class JournalController {
     return { analysis };
   }
 }
-

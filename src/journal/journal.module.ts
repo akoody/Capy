@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { JournalEntry, JournalEntrySchema } from './schemas/journal-entry.schema';
+import {
+  JournalEntry,
+  JournalEntrySchema,
+} from './schemas/journal-entry.schema';
 import { JournalController } from './journal.controller';
 import { JournalService } from './journal.service';
 import { UsersModule } from '../users/users.module';
@@ -17,4 +20,3 @@ import { UsersModule } from '../users/users.module';
   exports: [JournalService],
 })
 export class JournalModule {}
-

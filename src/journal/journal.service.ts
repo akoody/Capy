@@ -1,7 +1,10 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { JournalEntry, JournalEntryDocument } from './schemas/journal-entry.schema';
+import {
+  JournalEntry,
+  JournalEntryDocument,
+} from './schemas/journal-entry.schema';
 import { CreateJournalEntryDto } from './dto/create-journal-entry.dto';
 import { UpdateJournalEntryDto } from './dto/update-journal-entry.dto';
 import axios from 'axios';
@@ -11,10 +14,13 @@ import * as crypto from 'crypto';
 @Injectable()
 export class JournalService {
   constructor(
-    @InjectModel(JournalEntry.name) private journalEntryModel: Model<JournalEntryDocument>,
+    @InjectModel(JournalEntry.name)
+    private journalEntryModel: Model<JournalEntryDocument>,
   ) {}
 
-  async create(createJournalEntryDto: CreateJournalEntryDto): Promise<JournalEntry> {
+  async create(
+    createJournalEntryDto: CreateJournalEntryDto,
+  ): Promise<JournalEntry> {
     try {
       const createdEntry = new this.journalEntryModel({
         ...createJournalEntryDto,
@@ -71,17 +77,21 @@ export class JournalService {
 
     const entriesText = entries
       .map((entry, index) => {
-        const date = new Date(entry.date || entry.createdAt).toLocaleDateString('ru-RU');
+        const date = new Date(entry.date || entry.createdAt).toLocaleDateString(
+          'ru-RU',
+        );
         return `Запись ${index + 1} (${date}):\n${entry.title ? `Заголовок: ${entry.title}\n` : ''}${entry.content}`;
       })
       .join('\n\n---\n\n');
 
-    console.log(`Analyzing ${entries.length} journal entries for user ${userId}`);
+    console.log(
+      `Analyzing ${entries.length} journal entries for user ${userId}`,
+    );
 
     const isRussian = entries.some(
       (entry) =>
         /[а-яё]/i.test(entry.content) ||
-        (entry.title && /[а-яё]/i.test(entry.title))
+        (entry.title && /[а-яё]/i.test(entry.title)),
     );
 
     const systemMessage = isRussian
@@ -117,17 +127,20 @@ Response format: brief analysis of specific facts from the entries, then 2-3 spe
     try {
       return await this.analyzeWithGigaChat(userMessage, systemMessage);
     } catch (gigaError: any) {
-      if (gigaError?.response?.status === 401 || gigaError?.response?.status === 403) {
+      if (
+        gigaError?.response?.status === 401 ||
+        gigaError?.response?.status === 403
+      ) {
         (this as any)._gigachatToken = null;
         (this as any)._gigachatTokenExpiry = null;
       }
-      
+
       console.warn('GigaChat API error:', {
         status: gigaError?.response?.status,
         data: gigaError?.response?.data,
         message: gigaError?.message,
       });
-      
+
       try {
         return await this.analyzeWithGemini(userMessage, systemMessage);
       } catch (geminiError: any) {
@@ -136,21 +149,21 @@ Response format: brief analysis of specific facts from the entries, then 2-3 spe
           data: geminiError?.response?.data,
           message: geminiError?.message,
         });
-        
+
         try {
           return await this.analyzeWithDeepSeek(userMessage, systemMessage);
         } catch (deepseekError: any) {
           console.warn('DeepSeek API error:', deepseekError?.response?.status);
-          
+
           try {
             return await this.analyzeWithGroq(userMessage, systemMessage);
           } catch (groqError: any) {
             console.error('All AI APIs failed');
-            
+
             const errorMessage = isRussian
               ? 'Не удалось проанализировать заметки. Все AI сервисы недоступны. Пожалуйста, проверьте настройки API ключей или попробуйте позже.'
               : 'Failed to analyze journal entries. All AI services are unavailable. Please check API key settings or try again later.';
-            
+
             throw new BadRequestException(errorMessage);
           }
         }
@@ -160,7 +173,7 @@ Response format: brief analysis of specific facts from the entries, then 2-3 spe
 
   private async analyzeWithGroq(
     userMessage: string,
-    systemMessage: string
+    systemMessage: string,
   ): Promise<string> {
     const groqApiKey = process.env.GROQ_API_KEY;
 
@@ -186,11 +199,13 @@ Response format: brief analysis of specific facts from the entries, then 2-3 spe
         },
         timeout: 30000,
         validateStatus: (status) => status < 500,
-      }
+      },
     );
 
     if (response.status === 403 || response.status === 401) {
-      const error = new Error(`Groq API authentication failed: ${response.status}`);
+      const error = new Error(
+        `Groq API authentication failed: ${response.status}`,
+      );
       (error as any).response = response;
       throw error;
     }
@@ -206,7 +221,7 @@ Response format: brief analysis of specific facts from the entries, then 2-3 spe
 
   private async analyzeWithGemini(
     userMessage: string,
-    systemMessage: string
+    systemMessage: string,
   ): Promise<string> {
     const apiKey = process.env.GEMINI_API_KEY;
 
@@ -241,7 +256,7 @@ Response format: brief analysis of specific facts from the entries, then 2-3 spe
             'Content-Type': 'application/json',
           },
           timeout: 60000,
-        }
+        },
       );
 
       const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -256,13 +271,18 @@ Response format: brief analysis of specific facts from the entries, then 2-3 spe
         throw new Error(`Gemini API error: ${errorMsg}`);
       }
       if (error.response?.status === 403 || error.response?.status === 401) {
-        throw new Error('Gemini API authentication failed. Check your API key.');
+        throw new Error(
+          'Gemini API authentication failed. Check your API key.',
+        );
       }
       throw error;
     }
   }
 
-  private prepareGigaChatMessages(message: string, systemPrompt?: string): Array<{ role: string; content: string }> {
+  private prepareGigaChatMessages(
+    message: string,
+    systemPrompt?: string,
+  ): Array<{ role: string; content: string }> {
     const messages: Array<{ role: string; content: string }> = [];
 
     if (systemPrompt) {
@@ -298,18 +318,18 @@ Response format: brief analysis of specific facts from the entries, then 2-3 spe
         'scope=GIGACHAT_API_PERS',
         {
           headers: {
-            'Authorization': `Basic ${encodedKey}`,
+            Authorization: `Basic ${encodedKey}`,
             'Content-Type': 'application/x-www-form-urlencoded',
-            'Accept': 'application/json',
-            'RqUID': crypto.randomUUID(),
+            Accept: 'application/json',
+            RqUID: crypto.randomUUID(),
           },
           timeout: 30000,
           httpsAgent: agent,
-        }
+        },
       );
 
       accessToken = response.data.access_token;
-      tokenExpiry = Date.now() + (response.data.expires_in * 1000) - 60000;
+      tokenExpiry = Date.now() + response.data.expires_in * 1000 - 60000;
 
       (this as any)._gigachatToken = accessToken;
       (this as any)._gigachatTokenExpiry = tokenExpiry;
@@ -321,14 +341,16 @@ Response format: brief analysis of specific facts from the entries, then 2-3 spe
         data: error.response?.data,
         message: error.message,
       });
-      
-      throw new Error(`Failed to get GigaChat access token: ${error.response?.data?.message || error.message}`);
+
+      throw new Error(
+        `Failed to get GigaChat access token: ${error.response?.data?.message || error.message}`,
+      );
     }
   }
 
   private async analyzeWithGigaChat(
     userMessage: string,
-    systemMessage: string
+    systemMessage: string,
   ): Promise<string> {
     const apiKey = process.env.GIGACHAT_API_KEY;
 
@@ -359,12 +381,12 @@ Response format: brief analysis of specific facts from the entries, then 2-3 spe
         },
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
+            Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
           timeout: 180000,
           httpsAgent: agent,
-        }
+        },
       );
 
       return response.data.choices[0].message.content.trim();
@@ -379,7 +401,7 @@ Response format: brief analysis of specific facts from the entries, then 2-3 spe
 
   private async analyzeWithDeepSeek(
     userMessage: string,
-    systemMessage: string
+    systemMessage: string,
   ): Promise<string> {
     const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
 
@@ -405,7 +427,7 @@ Response format: brief analysis of specific facts from the entries, then 2-3 spe
         },
         timeout: 30000,
         validateStatus: (status) => status < 500,
-      }
+      },
     );
 
     if (response.status === 402) {
@@ -423,4 +445,3 @@ Response format: brief analysis of specific facts from the entries, then 2-3 spe
     return response.data.choices[0].message.content.trim();
   }
 }
-

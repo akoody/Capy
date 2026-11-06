@@ -12,7 +12,11 @@ export class FriendRequest {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   recipient: User;
 
-  @Prop({ required: true, enum: ['pending', 'accepted', 'rejected'], default: 'pending' })
+  @Prop({
+    required: true,
+    enum: ['pending', 'accepted', 'rejected'],
+    default: 'pending',
+  })
   status: 'pending' | 'accepted' | 'rejected';
 }
 

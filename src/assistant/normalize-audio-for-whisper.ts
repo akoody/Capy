@@ -13,9 +13,7 @@ function isWebmLike(file: UploadedAudioFile): boolean {
   const mime = (file.mimetype || '').toLowerCase();
   const name = (file.originalname || '').toLowerCase();
   return (
-    mime.includes('webm') ||
-    name.endsWith('.webm') ||
-    mime === 'video/webm'
+    mime.includes('webm') || name.endsWith('.webm') || mime === 'video/webm'
   );
 }
 

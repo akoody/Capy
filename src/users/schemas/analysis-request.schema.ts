@@ -17,8 +17,8 @@ export class AnalysisRequest {
   timestamp: Date;
 }
 
-export const AnalysisRequestSchema = SchemaFactory.createForClass(AnalysisRequest);
+export const AnalysisRequestSchema =
+  SchemaFactory.createForClass(AnalysisRequest);
 
 // Index for efficient queries
 AnalysisRequestSchema.index({ user: 1, timestamp: -1 });
-

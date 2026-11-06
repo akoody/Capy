@@ -1,4 +1,9 @@
-import { Injectable, Inject, forwardRef, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  forwardRef,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Transaction, TransactionDocument } from './schemas/transaction.schema';
@@ -37,7 +42,9 @@ export class TransactionsService {
       category = catDoc.name;
     }
     if (!category) {
-      throw new BadRequestException('Укажите категорию или выберите categoryId');
+      throw new BadRequestException(
+        'Укажите категорию или выберите categoryId',
+      );
     }
 
     const transaction = new this.transactionModel({
@@ -63,7 +70,10 @@ export class TransactionsService {
   }
 
   async findAllForUser(userId: string): Promise<TransactionDocument[]> {
-    return this.transactionModel.find({ user: userId }).sort({ date: -1 }).exec();
+    return this.transactionModel
+      .find({ user: userId })
+      .sort({ date: -1 })
+      .exec();
   }
 
   async update(
@@ -92,7 +102,10 @@ export class TransactionsService {
   }
 
   /** Транзакцию нельзя привязать к чужой цели. */
-  private async assertGoalOwned(userId: string, goalId?: string): Promise<void> {
+  private async assertGoalOwned(
+    userId: string,
+    goalId?: string,
+  ): Promise<void> {
     if (!goalId) return;
     const owned = await this.goalModel.exists(ownedBy(userId, goalId));
     if (!owned) {
@@ -102,7 +115,7 @@ export class TransactionsService {
 
   async analyzeTransactions(userId: string): Promise<string> {
     await this.usersService.checkAnalysisLimit(userId, 'transactions');
-    
+
     let user;
     if (userId.match(/^[0-9a-fA-F]{24}$/)) {
       user = await this.usersService.findById(userId);
@@ -110,15 +123,17 @@ export class TransactionsService {
       user = await this.usersService.findOneByTelegramId(parseInt(userId, 10));
     }
     const currency = user?.currency || 'USD';
-    
+
     const allTransactions = await this.findAllForUser(userId);
-    
-    const transactions = allTransactions.filter((tx) => 
-      (tx.type === 'income' || tx.type === 'expense') && !tx.goal
+
+    const transactions = allTransactions.filter(
+      (tx) => (tx.type === 'income' || tx.type === 'expense') && !tx.goal,
     );
 
     if (transactions.length === 0) {
-      throw new BadRequestException('Недостаточно данных для анализа транзакций. Добавьте транзакции доходов или расходов.');
+      throw new BadRequestException(
+        'Недостаточно данных для анализа транзакций. Добавьте транзакции доходов или расходов.',
+      );
     }
 
     await this.usersService.recordAnalysisRequest(userId, 'transactions');
@@ -132,28 +147,32 @@ export class TransactionsService {
       .join('\n\n---\n\n');
 
     const totalIncome = transactions
-      .filter(tx => tx.type === 'income')
+      .filter((tx) => tx.type === 'income')
       .reduce((sum, tx) => sum + tx.amount, 0);
     const totalExpense = transactions
-      .filter(tx => tx.type === 'expense')
+      .filter((tx) => tx.type === 'expense')
       .reduce((sum, tx) => sum + tx.amount, 0);
     const balance = totalIncome - totalExpense;
 
-    const categoryStats = transactions.reduce((acc, tx) => {
-      if (!acc[tx.category]) {
-        acc[tx.category] = { income: 0, expense: 0 };
-      }
-      if (tx.type === 'income') {
-        acc[tx.category].income += tx.amount;
-      } else {
-        acc[tx.category].expense += tx.amount;
-      }
-      return acc;
-    }, {} as Record<string, { income: number; expense: number }>);
+    const categoryStats = transactions.reduce(
+      (acc, tx) => {
+        if (!acc[tx.category]) {
+          acc[tx.category] = { income: 0, expense: 0 };
+        }
+        if (tx.type === 'income') {
+          acc[tx.category].income += tx.amount;
+        } else {
+          acc[tx.category].expense += tx.amount;
+        }
+        return acc;
+      },
+      {} as Record<string, { income: number; expense: number }>,
+    );
 
     const categoryStatsText = Object.entries(categoryStats)
-      .map(([category, stats]) => 
-        `Категория "${category}": доходы ${stats.income}, расходы ${stats.expense}`
+      .map(
+        ([category, stats]) =>
+          `Категория "${category}": доходы ${stats.income}, расходы ${stats.expense}`,
       )
       .join('\n');
 
@@ -199,13 +218,13 @@ CRITICAL - RESPONSE FORMAT:
 - Format: brief analysis (2-3 paragraphs), then empty line, then "RECOMMENDATIONS:" and numbered list (1., 2., 3.)`;
 
     const currencyNames: Record<string, string> = {
-      'USD': 'долларов США',
-      'EUR': 'евро',
-      'RUB': 'рублей',
-      'GBP': 'фунтов стерлингов',
+      USD: 'долларов США',
+      EUR: 'евро',
+      RUB: 'рублей',
+      GBP: 'фунтов стерлингов',
     };
     const currencyName = currencyNames[currency] || currency;
-    
+
     const userMessage = isRussian
       ? `Вот все транзакции пользователя:
 
@@ -243,7 +262,10 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
     try {
       return await this.analyzeWithGigaChat(userMessage, systemMessage);
     } catch (gigaError: any) {
-      if (gigaError?.response?.status === 401 || gigaError?.response?.status === 403) {
+      if (
+        gigaError?.response?.status === 401 ||
+        gigaError?.response?.status === 403
+      ) {
         (this as any)._gigachatToken = null;
         (this as any)._gigachatTokenExpiry = null;
       }
@@ -252,7 +274,7 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
         data: gigaError?.response?.data,
         message: gigaError?.message,
       });
-      
+
       try {
         return await this.analyzeWithGemini(userMessage, systemMessage);
       } catch (geminiError: any) {
@@ -261,21 +283,21 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
           data: geminiError?.response?.data,
           message: geminiError?.message,
         });
-        
+
         try {
           return await this.analyzeWithDeepSeek(userMessage, systemMessage);
         } catch (deepseekError: any) {
           console.warn('DeepSeek API error:', deepseekError?.response?.status);
-          
+
           try {
             return await this.analyzeWithGroq(userMessage, systemMessage);
           } catch (groqError: any) {
             console.error('All AI APIs failed');
-            
+
             const errorMessage = isRussian
               ? 'Не удалось проанализировать транзакции. Все AI сервисы недоступны. Пожалуйста, проверьте настройки API ключей или попробуйте позже.'
               : 'Failed to analyze transactions. All AI services are unavailable. Please check API key settings or try again later.';
-            
+
             throw new BadRequestException(errorMessage);
           }
         }
@@ -285,7 +307,7 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
 
   private async analyzeWithGroq(
     userMessage: string,
-    systemMessage: string
+    systemMessage: string,
   ): Promise<string> {
     const groqApiKey = process.env.GROQ_API_KEY;
     if (!groqApiKey) {
@@ -310,11 +332,13 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
         },
         timeout: 30000,
         validateStatus: (status) => status < 500,
-      }
+      },
     );
 
     if (response.status === 403 || response.status === 401) {
-      const error = new Error(`Groq API authentication failed: ${response.status}`);
+      const error = new Error(
+        `Groq API authentication failed: ${response.status}`,
+      );
       (error as any).response = response;
       throw error;
     }
@@ -330,7 +354,7 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
 
   private async analyzeWithGemini(
     userMessage: string,
-    systemMessage: string
+    systemMessage: string,
   ): Promise<string> {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -364,7 +388,7 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
             'Content-Type': 'application/json',
           },
           timeout: 60000,
-        }
+        },
       );
 
       const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -379,13 +403,18 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
         throw new Error(`Gemini API error: ${errorMsg}`);
       }
       if (error.response?.status === 403 || error.response?.status === 401) {
-        throw new Error('Gemini API authentication failed. Check your API key.');
+        throw new Error(
+          'Gemini API authentication failed. Check your API key.',
+        );
       }
       throw error;
     }
   }
 
-  private prepareGigaChatMessages(message: string, systemPrompt?: string): Array<{ role: string; content: string }> {
+  private prepareGigaChatMessages(
+    message: string,
+    systemPrompt?: string,
+  ): Array<{ role: string; content: string }> {
     const messages: Array<{ role: string; content: string }> = [];
     if (systemPrompt) {
       messages.push({ role: 'system', content: systemPrompt });
@@ -417,18 +446,18 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
         'scope=GIGACHAT_API_PERS',
         {
           headers: {
-            'Authorization': `Basic ${encodedKey}`,
+            Authorization: `Basic ${encodedKey}`,
             'Content-Type': 'application/x-www-form-urlencoded',
-            'Accept': 'application/json',
-            'RqUID': crypto.randomUUID(),
+            Accept: 'application/json',
+            RqUID: crypto.randomUUID(),
           },
           timeout: 30000,
           httpsAgent: agent,
-        }
+        },
       );
 
       accessToken = response.data.access_token;
-      tokenExpiry = Date.now() + (response.data.expires_in * 1000) - 60000;
+      tokenExpiry = Date.now() + response.data.expires_in * 1000 - 60000;
       (this as any)._gigachatToken = accessToken;
       (this as any)._gigachatTokenExpiry = tokenExpiry;
 
@@ -439,13 +468,15 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
         data: error.response?.data,
         message: error.message,
       });
-      throw new Error(`Failed to get GigaChat access token: ${error.response?.data?.message || error.message}`);
+      throw new Error(
+        `Failed to get GigaChat access token: ${error.response?.data?.message || error.message}`,
+      );
     }
   }
 
   private async analyzeWithGigaChat(
     userMessage: string,
-    systemMessage: string
+    systemMessage: string,
   ): Promise<string> {
     const apiKey = process.env.GIGACHAT_API_KEY;
     if (!apiKey) {
@@ -472,12 +503,12 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
         },
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
+            Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
           timeout: 180000,
           httpsAgent: agent,
-        }
+        },
       );
 
       return response.data.choices[0].message.content.trim();
@@ -492,7 +523,7 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
 
   private async analyzeWithDeepSeek(
     userMessage: string,
-    systemMessage: string
+    systemMessage: string,
   ): Promise<string> {
     const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
     if (!deepseekApiKey) {
@@ -517,7 +548,7 @@ Analyze this data and provide specific, useful analysis. Always specify ${curren
         },
         timeout: 30000,
         validateStatus: (status) => status < 500,
-      }
+      },
     );
 
     if (response.status === 402) {
