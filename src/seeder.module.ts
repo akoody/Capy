@@ -1,4 +1,3 @@
-
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -7,10 +6,14 @@ import { Course, CourseSchema } from './academy/schemas/course.schema';
 import { Lesson, LessonSchema } from './academy/schemas/lesson.schema';
 import { User, UserSchema } from './users/schemas/user.schema';
 import { AcademyModule } from './academy/academy.module';
+import { createEnvValidator, seederEnvSchema } from './config/env.schema';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: createEnvValidator(seederEnvSchema),
+    }),
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
