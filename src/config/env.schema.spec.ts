@@ -19,6 +19,29 @@ describe('appEnvSchema', () => {
     expect(env.OPENAI_API_KEY).toBeUndefined();
   });
 
+  it('disables CORS and uses a 24h init data lifetime by default', () => {
+    const env = validate(validEnv);
+    expect(env.CORS_ORIGINS).toEqual([]);
+    expect(env.TELEGRAM_AUTH_MAX_AGE_SECONDS).toBe(86400);
+  });
+
+  it('parses a comma-separated CORS allow-list', () => {
+    const env = validate({
+      ...validEnv,
+      CORS_ORIGINS: 'https://capy.example, http://localhost:5173',
+    });
+    expect(env.CORS_ORIGINS).toEqual([
+      'https://capy.example',
+      'http://localhost:5173',
+    ]);
+  });
+
+  it('rejects CORS entries that are not URLs', () => {
+    expect(() => validate({ ...validEnv, CORS_ORIGINS: '*' })).toThrow(
+      /CORS_ORIGINS/,
+    );
+  });
+
   it('coerces PORT from string', () => {
     expect(validate({ ...validEnv, PORT: '8080' }).PORT).toBe(8080);
   });

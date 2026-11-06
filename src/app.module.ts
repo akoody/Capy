@@ -1,4 +1,5 @@
-import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -13,7 +14,7 @@ import { BudgetsModule } from './budgets/budgets.module';
 import { GamificationModule } from './gamification/gamification.module';
 import { FriendsModule } from './friends/friends.module';
 import { PiggyBankModule } from './piggy-bank/piggy-bank.module';
-import { TelegramAuthMiddleware } from './telegram-auth.middleware';
+import { TelegramAuthGuard } from './auth/telegram-auth.guard';
 import { AuthModule } from './auth/auth.module';
 import { JournalModule } from './journal/journal.module';
 import { AssistantModule } from './assistant/assistant.module';
@@ -48,9 +49,6 @@ import { TasksModule } from './tasks/tasks.module';
     AssistantModule,
     TasksModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: TelegramAuthGuard }],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(TelegramAuthMiddleware).forRoutes('*');
-  }
-}
+export class AppModule {}

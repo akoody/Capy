@@ -10,8 +10,9 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AssistantService } from './assistant.service';
-import { TelegramUser } from '../user.decorator';
+import { TelegramUser } from '../auth/telegram-user.decorator';
 import type { UploadedAudioFile } from './uploaded-audio-file';
+import type { TelegramUserPayload } from '../auth/telegram-init-data';
 
 @Controller('assistant')
 export class AssistantController {
@@ -27,7 +28,7 @@ export class AssistantController {
   )
   async voice(
     @UploadedFile() file: UploadedAudioFile,
-    @TelegramUser() telegramUser: { id: number },
+    @TelegramUser() telegramUser: TelegramUserPayload,
   ) {
     if (!file?.buffer?.length) {
       throw new BadRequestException('Загрузите аудиофайл в поле audio');

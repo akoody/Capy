@@ -1,7 +1,8 @@
 import { Controller, Get, Post, Body, Query, Patch } from '@nestjs/common';
 import { PiggyBankService } from './piggy-bank.service';
-import { TelegramUser } from '../user.decorator';
+import { TelegramUser } from '../auth/telegram-user.decorator';
 import { UsersService } from '../users/users.service';
+import type { TelegramUserPayload } from '../auth/telegram-init-data';
 
 @Controller('piggy-bank')
 export class PiggyBankController {
@@ -10,7 +11,7 @@ export class PiggyBankController {
     private readonly usersService: UsersService,
   ) {}
 
-  private async getUserIdFromTelegram(telegramUser: any): Promise<string> {
+  private async getUserIdFromTelegram(telegramUser: TelegramUserPayload): Promise<string> {
     const user = await this.usersService.findOrCreateByTelegramUser(telegramUser);
     return user._id.toString();
   }
@@ -31,7 +32,7 @@ export class PiggyBankController {
   }
 
   @Post('analyze')
-  async analyze(@TelegramUser() telegramUser: any) {
+  async analyze(@TelegramUser() telegramUser: TelegramUserPayload) {
     const userId = await this.getUserIdFromTelegram(telegramUser);
     const analysis = await this.piggyBankService.analyzeSavings(userId);
     return { analysis };

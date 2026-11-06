@@ -22,6 +22,7 @@ import type { UploadedAudioFile } from './uploaded-audio-file';
 import { normalizeAudioForWhisper } from './normalize-audio-for-whisper';
 import { normalizeEnvSecret } from '../env-secrets';
 import "dotenv/config";
+import type { TelegramUserPayload } from '../auth/telegram-init-data';
 
 @Injectable()
 export class AssistantService {
@@ -38,7 +39,7 @@ export class AssistantService {
 
   async processVoiceCommand(
     file: UploadedAudioFile,
-    telegramUser: { id: number },
+    telegramUser: TelegramUserPayload,
   ): Promise<VoiceCommandResponseDto> {
     const user = await this.usersService.findOrCreateByTelegramUser(telegramUser);
     const userId = user._id.toString();

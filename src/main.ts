@@ -6,6 +6,8 @@ import { SeederModule } from './seeder.module';
 import { AcademySeeder } from './academy/seeder';
 import { AllExceptionsFilter } from './all-exceptions.filter';
 import type { NextFunction, Request, Response } from 'express';
+import { ConfigService } from '@nestjs/config';
+import type { AppEnv } from './config/env.schema';
 
 async function bootstrap() {
   if (process.argv.includes('seed')) {
@@ -30,14 +32,18 @@ async function bootstrap() {
   });
 
   app.useGlobalFilters(new AllExceptionsFilter());
-  app.enableCors();
+  const config = app.get<ConfigService<AppEnv, true>>(ConfigService);
+  const corsOrigins = config.get('CORS_ORIGINS', { infer: true });
+  if (corsOrigins.length > 0) {
+    app.enableCors({ origin: corsOrigins });
+  }
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
     }),
   );
-  const port = Number(process.env.PORT) || 3001;
+  const port = config.get('PORT', { infer: true });
   await app.listen(port);
   console.log(`NestJS backend (MongoDB) is running on http://localhost:${port}`);
 }
