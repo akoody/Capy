@@ -1,0 +1,18 @@
+import { IsNumber, IsString, IsOptional } from 'class-validator';
+
+export class CreateUserDto {
+  @IsNumber()
+  readonly telegramId: number;
+
+  @IsString()
+  @IsOptional()
+  readonly firstName: string;
+
+  @IsString()
+  @IsOptional()
+  readonly lastName: string;
+
+  @IsString()
+  @IsOptional()
+  readonly username: string;
+}

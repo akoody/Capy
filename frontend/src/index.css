@@ -1,0 +1,221 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    color-scheme: dark;
+    --bg-color: #09090b;
+    --bg-elevated: #0f1014;
+    --surface-1: #141419;
+    --surface-2: #1c1c24;
+    --primary-color: #a5b4fc;
+    --primary-muted: rgba(165, 180, 252, 0.14);
+    --primary-ring: rgba(165, 180, 252, 0.35);
+
+    --text-color: #fafafa;
+    --text-secondary-color: #a1a1aa;
+    --text-tertiary: #71717a;
+
+    --card-bg-color: var(--surface-1);
+    --card-border-color: rgba(255, 255, 255, 0.06);
+
+    --income-color: #4ade80;
+    --expense-color: #fb7185;
+    --accent-gold: #fbbf24;
+    --accent-red: #fb7185;
+
+    --radius-sm: 10px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-xl: 24px;
+
+    --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 4px 24px rgba(0, 0, 0, 0.35);
+    --shadow-nav: 0 -8px 40px rgba(0, 0, 0, 0.45);
+
+    /* FAB: плавающая нижняя навигация ~76px + отступ */
+    --fab-nav-gap: 12px;
+    --fab-nav-height: 64px;
+    --fab-voice-bottom: calc(
+        var(--fab-nav-gap) + var(--fab-nav-height) + var(--fab-nav-gap) +
+            env(safe-area-inset-bottom, 0px)
+    );
+    --fab-journal-bottom: calc(var(--fab-voice-bottom) + 56px + var(--fab-nav-gap));
+}
+
+@layer base {
+    html {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+        font-family:
+            'Plus Jakarta Sans',
+            system-ui,
+            -apple-system,
+            'Segoe UI',
+            Roboto,
+            'Helvetica Neue',
+            Arial,
+            sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+        letter-spacing: -0.011em;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    ::selection {
+        background: var(--primary-muted);
+        color: var(--text-color);
+    }
+}
+
+html,
+body,
+#root {
+    max-width: 100%;
+    overflow-x: hidden;
+    min-height: 100%;
+}
+
+@layer components {
+    .capy-card {
+        background-color: var(--card-bg-color);
+        border: 1px solid var(--card-border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-card);
+    }
+
+    .capy-page-title {
+        font-size: 1.375rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        color: var(--text-color);
+        line-height: 1.2;
+    }
+
+    .capy-section-label {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-tertiary);
+    }
+
+    .capy-btn-primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        padding: 0.875rem 1rem;
+        font-weight: 600;
+        font-size: 0.9375rem;
+        letter-spacing: -0.02em;
+        color: #0c0c0f;
+        background: linear-gradient(165deg, #c4b5fd 0%, var(--primary-color) 100%);
+        border: none;
+        border-radius: var(--radius-md);
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 4px 16px rgba(99, 102, 241, 0.25);
+        transition:
+            transform 0.15s ease,
+            filter 0.15s ease,
+            opacity 0.15s ease;
+    }
+
+    .capy-btn-primary:hover:not(:disabled) {
+        filter: brightness(1.06);
+    }
+
+    .capy-btn-primary:active:not(:disabled) {
+        transform: scale(0.98);
+    }
+
+    .capy-btn-primary:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .capy-btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: var(--text-secondary-color);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--card-border-color);
+        border-radius: var(--radius-md);
+        transition:
+            background 0.15s ease,
+            color 0.15s ease;
+    }
+
+    .capy-btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.07);
+        color: var(--text-color);
+    }
+
+    .capy-pill {
+        padding: 0.375rem 0.875rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        border-radius: 9999px;
+        transition:
+            background 0.15s ease,
+            color 0.15s ease;
+    }
+
+    .capy-pill-active {
+        background: var(--primary-muted);
+        color: var(--primary-color);
+        box-shadow: 0 0 0 1px var(--primary-ring);
+    }
+
+    .capy-pill-idle {
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text-secondary-color);
+    }
+
+    .capy-input {
+        width: 100%;
+        border-radius: var(--radius-md);
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid var(--card-border-color);
+        padding: 0.625rem 0.875rem;
+        color: var(--text-color);
+        font-size: 0.9375rem;
+        transition:
+            border-color 0.15s ease,
+            box-shadow 0.15s ease;
+    }
+
+    .capy-input:focus {
+        outline: none;
+        border-color: var(--primary-ring);
+        box-shadow: 0 0 0 3px var(--primary-muted);
+    }
+
+    .capy-shimmer {
+        background: linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.04) 0%,
+            rgba(255, 255, 255, 0.09) 50%,
+            rgba(255, 255, 255, 0.04) 100%
+        );
+        background-size: 200% 100%;
+        animation: capy-shimmer 1.2s ease-in-out infinite;
+    }
+
+    @keyframes capy-shimmer {
+        0% {
+            background-position: 200% 0;
+        }
+        100% {
+            background-position: -200% 0;
+        }
+    }
+}
