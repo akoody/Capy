@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
-import { User } from '../../users/schemas/user.schema';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 export type PiggyBankDocument = HydratedDocument<PiggyBank>;
 
@@ -12,7 +11,7 @@ export class PiggyBank {
     required: true,
     unique: true,
   })
-  user!: User;
+  user!: Types.ObjectId;
 
   @Prop({ default: 0 })
   amount!: number;

@@ -8,9 +8,11 @@ import { GoalsModule } from '../goals/goals.module';
 import { TasksModule } from '../tasks/tasks.module';
 import { JournalModule } from '../journal/journal.module';
 import { BudgetsModule } from '../budgets/budgets.module';
+import { LlmModule } from '../llm/llm.module';
 
 @Module({
   imports: [
+    LlmModule,
     UsersModule,
     forwardRef(() => TransactionsModule),
     PiggyBankModule,

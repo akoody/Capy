@@ -6,7 +6,15 @@ export interface ChatPrompt {
 export interface CompletionOptions {
   temperature: number;
   maxTokens: number;
+  /** Попросить провайдера вернуть JSON-объект, если он это умеет. */
+  jsonObject?: boolean;
 }
+
+/**
+ * Назначение запроса определяет цепочку провайдеров:
+ * analysis — текстовые разборы финансов, interpret — разбор голосовых команд в JSON.
+ */
+export type LlmPurpose = 'analysis' | 'interpret';
 
 export const DEFAULT_COMPLETION: CompletionOptions = {
   temperature: 0.7,

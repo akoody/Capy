@@ -31,7 +31,7 @@ export class TransactionsService {
   async create(
     userId: string,
     createTransactionDto: CreateTransactionDto,
-  ): Promise<Transaction> {
+  ): Promise<TransactionDocument> {
     await this.assertGoalOwned(userId, createTransactionDto.goal);
     let category = createTransactionDto.category?.trim();
     if (createTransactionDto.categoryId) {

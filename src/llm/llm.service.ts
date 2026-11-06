@@ -4,8 +4,11 @@ import {
   CompletionOptions,
   DEFAULT_COMPLETION,
   LlmProvider,
+  LlmPurpose,
   LlmUnavailableError,
 } from './llm.types';
+
+export type LlmChains = Record<LlmPurpose, LlmProvider[]>;
 
 export const LLM_PROVIDERS = Symbol('LLM_PROVIDERS');
 
@@ -17,16 +20,15 @@ export const LLM_PROVIDERS = Symbol('LLM_PROVIDERS');
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
 
-  constructor(
-    @Inject(LLM_PROVIDERS) private readonly providers: LlmProvider[],
-  ) {}
+  constructor(@Inject(LLM_PROVIDERS) private readonly chains: LlmChains) {}
 
   async complete(
     prompt: ChatPrompt,
     options: CompletionOptions = DEFAULT_COMPLETION,
+    purpose: LlmPurpose = 'analysis',
   ): Promise<string> {
     const failures: Array<{ provider: string; reason: string }> = [];
-    for (const provider of this.providers) {
+    for (const provider of this.chains[purpose]) {
       if (!provider.isConfigured()) continue;
       try {
         return await provider.complete(prompt, options);

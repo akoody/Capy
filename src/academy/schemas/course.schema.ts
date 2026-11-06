@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 import { Lesson } from './lesson.schema';
 
 export type CourseDocument = HydratedDocument<Course>;
@@ -16,7 +16,7 @@ export class Course {
   category!: 'Новичок' | 'Средний' | 'Продвинутый';
 
   @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: Lesson.name }] })
-  lessons!: Lesson[];
+  lessons!: Types.ObjectId[];
 }
 
 export const CourseSchema = SchemaFactory.createForClass(Course);

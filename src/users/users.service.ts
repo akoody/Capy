@@ -16,7 +16,6 @@ import type { AccountResolver } from '../auth/current-account';
 import { AchievementsService } from '../achievements/achievements.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { GoalsService } from '../goals/goals.service';
-import { GoalDocument } from '../goals/schemas/goal.schema';
 import { TransactionDocument } from '../transactions/schemas/transaction.schema';
 import type { TelegramUserPayload } from '../auth/telegram-init-data';
 
@@ -40,10 +39,10 @@ export class UsersService implements AccountResolver {
     let csv = 'Date,Goal,Transaction Type,Amount\n';
 
     for (const transaction of transactions) {
-      const goal = goals.find(
-        (g) => (g as GoalDocument)._id.toString() === String(transaction.goal),
-      );
-      const date = (transaction as any).createdAt.toISOString().split('T')[0];
+      const goal = transaction.goal
+        ? goals.find((g) => g._id.equals(transaction.goal))
+        : undefined;
+      const date = transaction.createdAt.toISOString().split('T')[0];
       const goalName = goal ? goal.name : 'N/A';
       csv += `${date},${goalName},${transaction.type},${transaction.amount}\n`;
     }

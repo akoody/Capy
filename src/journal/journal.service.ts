@@ -9,6 +9,7 @@ import { CreateJournalEntryDto } from './dto/create-journal-entry.dto';
 import { UpdateJournalEntryDto } from './dto/update-journal-entry.dto';
 import { LlmService } from '../llm/llm.service';
 import { LlmUnavailableError } from '../llm/llm.types';
+import { orNotFound, ownedBy } from '../common/owned-by';
 
 @Injectable()
 export class JournalService {
@@ -19,18 +20,14 @@ export class JournalService {
   ) {}
 
   async create(
-    createJournalEntryDto: CreateJournalEntryDto,
+    userId: string,
+    dto: CreateJournalEntryDto,
   ): Promise<JournalEntry> {
-    try {
-      const createdEntry = new this.journalEntryModel({
-        ...createJournalEntryDto,
-        user: createJournalEntryDto.userId,
-      });
-      return await createdEntry.save();
-    } catch (error) {
-      console.error('Error saving journal entry to database:', error);
-      throw error;
-    }
+    return new this.journalEntryModel({
+      ...dto,
+      ...(dto.date ? { date: new Date(dto.date) } : {}),
+      user: userId,
+    }).save();
   }
 
   async findAllForUser(userId: string): Promise<JournalEntry[]> {
@@ -40,32 +37,35 @@ export class JournalService {
       .exec();
   }
 
-  async findOne(id: string, userId: string): Promise<JournalEntry | null> {
-    return this.journalEntryModel.findOne({ _id: id, user: userId }).exec();
+  async findOne(userId: string, id: string): Promise<JournalEntry> {
+    return orNotFound(
+      await this.journalEntryModel.findOne(ownedBy(userId, id)).exec(),
+      'Journal entry',
+    );
   }
 
   async update(
-    id: string,
     userId: string,
-    updateJournalEntryDto: UpdateJournalEntryDto,
-  ): Promise<JournalEntry | null> {
-    const entry = await this.findOne(id, userId);
-    if (!entry) {
-      throw new BadRequestException('Journal entry not found.');
-    }
-
-    return this.journalEntryModel
-      .findByIdAndUpdate(id, { $set: updateJournalEntryDto }, { new: true })
-      .exec();
+    id: string,
+    dto: UpdateJournalEntryDto,
+  ): Promise<JournalEntry> {
+    const update = {
+      ...dto,
+      ...(dto.date ? { date: new Date(dto.date) } : {}),
+    };
+    return orNotFound(
+      await this.journalEntryModel
+        .findOneAndUpdate(ownedBy(userId, id), { $set: update }, { new: true })
+        .exec(),
+      'Journal entry',
+    );
   }
 
-  async remove(id: string, userId: string): Promise<any> {
-    const entry = await this.findOne(id, userId);
-    if (!entry) {
-      throw new BadRequestException('Journal entry not found.');
-    }
-
-    return this.journalEntryModel.findByIdAndDelete(id).exec();
+  async remove(userId: string, id: string): Promise<JournalEntry> {
+    return orNotFound(
+      await this.journalEntryModel.findOneAndDelete(ownedBy(userId, id)).exec(),
+      'Journal entry',
+    );
   }
 
   async analyzeEntries(userId: string): Promise<string> {

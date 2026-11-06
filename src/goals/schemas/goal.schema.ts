@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
-import { User } from '../../users/schemas/user.schema';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 export type GoalDocument = HydratedDocument<Goal>;
 
@@ -34,7 +33,7 @@ export class Goal {
   icon!: string;
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
-  user!: User;
+  user!: Types.ObjectId;
 
   @Prop({ type: RecurringTransaction })
   recurringTransaction?: RecurringTransaction;

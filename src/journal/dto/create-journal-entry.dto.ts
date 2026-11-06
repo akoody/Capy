@@ -4,8 +4,6 @@ export class CreateJournalEntryDto {
   @IsString()
   readonly content!: string;
 
-  userId?: string;
-
   @IsString()
   @IsOptional()
   readonly title?: string;
@@ -16,5 +14,5 @@ export class CreateJournalEntryDto {
 
   @IsDateString()
   @IsOptional()
-  readonly date?: string | Date;
+  readonly date?: string;
 }

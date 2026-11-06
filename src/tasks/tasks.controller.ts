@@ -24,7 +24,7 @@ export class TasksController {
   ) {
     const st = status ?? 'all';
     const allowed = ['open', 'done', 'cancelled', 'all'] as const;
-    const safe = allowed.includes(st as (typeof allowed)[number]) ? st : 'all';
+    const safe = allowed.includes(st) ? st : 'all';
     return this.tasksService.findAllForUser(userId, safe);
   }
 

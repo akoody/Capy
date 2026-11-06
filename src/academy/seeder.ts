@@ -4,41 +4,30 @@ import { Model } from 'mongoose';
 import { Course, CourseDocument } from './schemas/course.schema';
 import { Lesson, LessonDocument } from './schemas/lesson.schema';
 
-import { User, UserDocument } from '../users/schemas/user.schema';
+type SeedCourse = Omit<Course, 'lessons'> & { lessons: Lesson[] };
 
 @Injectable()
 export class AcademySeeder {
   constructor(
     @InjectModel(Course.name) private courseModel: Model<CourseDocument>,
     @InjectModel(Lesson.name) private lessonModel: Model<LessonDocument>,
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {}
 
+  /**
+   * Пересоздаёт контент академии. Пользователей не трогает: раньше сидер
+   * удалял всю коллекцию users и создавал тестового пользователя.
+   */
   async seed() {
-    console.log('!!!!!!!!!! RUNNING ACADEMY SEEDER !!!!!!!!!');
-    console.log('Seeding academy and test user...');
+    console.log('Seeding academy courses...');
     await this.courseModel.deleteMany({});
     await this.lessonModel.deleteMany({});
-    await this.userModel.deleteMany({});
-
-    await this.createTestUser();
     await this.createCourses();
-    console.log('Academy and test user seeded successfully!');
-  }
-
-  private async createTestUser() {
-    const testUser = new this.userModel({
-      telegramId: 123456789,
-      firstName: 'Test',
-      lastName: 'User',
-      username: 'testuser',
-    });
-    await testUser.save();
+    console.log('Academy seeded successfully');
   }
 
   private async createCourses() {
     // Beginner Courses
-    const beginnerCourse1 = await this.createCourse({
+    await this.createCourse({
       title: 'Первые шаги к богатству',
       description:
         'Основы финансовой мудрости из древнего Вавилона. Научитесь платить сначала себе и заставьте свои деньги работать.',
@@ -68,7 +57,7 @@ export class AcademySeeder {
       ],
     });
 
-    const beginnerCourse2 = await this.createCourse({
+    await this.createCourse({
       title: 'Финансовая грамотность для начинающих',
       description:
         'Уроки от Роберта Кийосаки. Поймите разницу между активами и пассивами и начните строить свой финансовый фундамент.',
@@ -98,7 +87,7 @@ export class AcademySeeder {
     });
 
     // Intermediate Courses
-    const intermediateCourse1 = await this.createCourse({
+    await this.createCourse({
       title: 'Психология денег и власти',
       description:
         'Как ваше мышление влияет на ваше финансовое состояние. Уроки из "48 законов власти", применимые к финансам.',
@@ -122,7 +111,7 @@ export class AcademySeeder {
       ],
     });
 
-    const intermediateCourse2 = await this.createCourse({
+    await this.createCourse({
       title: '7 навыков высокоэффективных людей',
       description: 'Уроки личной эффективности от Стивена Кови.',
       category: 'Средний',
@@ -165,7 +154,7 @@ export class AcademySeeder {
       ],
     });
 
-    const intermediateCourse3 = await this.createCourse({
+    await this.createCourse({
       title: 'Как завоевывать друзей и оказывать влияние на людей',
       description: 'Классические уроки общения от Дейла Карнеги.',
       category: 'Средний',
@@ -228,7 +217,7 @@ export class AcademySeeder {
     });
 
     // Advanced Courses
-    const advancedCourse1 = await this.createCourse({
+    await this.createCourse({
       title: 'Стратегии богатства',
       description:
         'Продвинутые концепции для создания и приумножения капитала.',
@@ -248,7 +237,7 @@ export class AcademySeeder {
     });
   }
 
-  private async createCourse(courseData: any) {
+  private async createCourse(courseData: SeedCourse) {
     const lessons = await this.lessonModel.insertMany(courseData.lessons);
     const course = new this.courseModel({
       ...courseData,

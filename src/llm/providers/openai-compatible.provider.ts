@@ -14,9 +14,15 @@ export interface OpenAiCompatibleConfig {
   model: string;
   apiKey: string | undefined;
   timeoutMs: number;
+  /** Дополнительные заголовки, например OpenAI-Organization. */
+  headers?: Record<string, string>;
+  /** Поддерживает `response_format: json_object` (OpenAI). */
+  supportsJsonMode?: boolean;
+  /** Параметры, которые зависят от модели (reasoning_effort для gpt-5 и т. п.). */
+  extraBody?: Record<string, unknown>;
 }
 
-/** Groq и DeepSeek: один и тот же протокол chat completions с Bearer-ключом. */
+/** OpenAI, Groq и DeepSeek: один и тот же протокол chat completions с Bearer-ключом. */
 export class OpenAiCompatibleProvider implements LlmProvider {
   readonly name: string;
 
@@ -45,11 +51,16 @@ export class OpenAiCompatibleProvider implements LlmProvider {
         ],
         temperature: options.temperature,
         max_tokens: options.maxTokens,
+        ...(options.jsonObject && this.config.supportsJsonMode
+          ? { response_format: { type: 'json_object' } }
+          : {}),
+        ...this.config.extraBody,
       },
       {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.config.apiKey}`,
+          ...this.config.headers,
         },
         timeout: this.config.timeoutMs,
         validateStatus: () => true,

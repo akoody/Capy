@@ -157,7 +157,7 @@ export class TasksService {
 
     const now = new Date();
     for (const task of tasks) {
-      const u = task.user as UserDocument;
+      const u = task.user;
       const tid = u?.telegramId;
       if (tid == null) continue;
 

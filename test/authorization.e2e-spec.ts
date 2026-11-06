@@ -174,6 +174,37 @@ describe('Authorization (e2e)', () => {
     expect(bank.body.amount).toBe(150);
   });
 
+  it('keeps journal entries private to their owner', async () => {
+    const entry = await http()
+      .post('/journal')
+      .set(as(alice))
+      .send({ content: 'Spent too much', date: '2026-11-02T10:00:00.000Z' })
+      .expect(201);
+    expect(entry.body.date).toBe('2026-11-02T10:00:00.000Z');
+
+    expect(
+      (await http().get('/journal').set(as(bob)).expect(200)).body,
+    ).toEqual([]);
+    await http().get(`/journal/${entry.body._id}`).set(as(bob)).expect(404);
+    await http()
+      .patch(`/journal/${entry.body._id}`)
+      .set(as(bob))
+      .send({ content: 'pwned' })
+      .expect(404);
+    await http().delete(`/journal/${entry.body._id}`).set(as(bob)).expect(404);
+    await http().get('/journal/not-an-id').set(as(alice)).expect(404);
+
+    const updated = await http()
+      .patch(`/journal/${entry.body._id}`)
+      .set(as(alice))
+      .send({ content: 'Spent a bit less', date: '2026-11-03T10:00:00.000Z' })
+      .expect(200);
+    expect(updated.body).toMatchObject({
+      content: 'Spent a bit less',
+      date: '2026-11-03T10:00:00.000Z',
+    });
+  });
+
   it('keeps budgets private to their owner', async () => {
     const budget = await http()
       .post('/budgets')
@@ -252,8 +283,8 @@ describe('Authorization (e2e)', () => {
       .set(as(bob))
       .expect(200);
     expect(board.body.length).toBeGreaterThan(0);
-    for (const entry of board.body) {
-      expect(Object.keys(entry).sort()).toEqual(
+    for (const entry of board.body as Array<Record<string, unknown>>) {
+      expect(Object.keys(entry)).toEqual(
         expect.arrayContaining(['_id', 'firstName', 'points']),
       );
       expect(entry.telegramId).toBeUndefined();

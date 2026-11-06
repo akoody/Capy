@@ -31,14 +31,14 @@ export class TelegramNotifyService {
       );
       if (res.status !== 200 || res.data?.ok === false) {
         this.logger.warn(
-          `Telegram API: ${res.status} ${res.data?.description || res.data || ''}`,
+          `Telegram API: ${res.status} ${res.data?.description ?? ''}`,
         );
         return false;
       }
       return true;
     } catch (e) {
       this.logger.warn(
-        `Telegram sendMessage failed: ${e instanceof Error ? e.message : e}`,
+        `Telegram sendMessage failed: ${e instanceof Error ? e.message : String(e)}`,
       );
       return false;
     }
