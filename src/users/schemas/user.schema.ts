@@ -15,13 +15,13 @@ export class User {
   firstName: string;
 
   @Prop()
-  lastName: string;
+  lastName?: string;
 
   @Prop()
-  username: string;
+  username?: string;
 
   @Prop()
-  photoUrl: string;
+  photoUrl?: string;
 
   @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Achievement' }] })
   achievements: Achievement[];

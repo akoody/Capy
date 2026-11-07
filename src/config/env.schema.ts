@@ -33,6 +33,26 @@ export const appEnvSchema = seederEnvSchema.extend({
     .default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   TELEGRAM_BOT_TOKEN: secret(),
+  /** Срок жизни initData Mini App. Telegram не обновляет её во время сессии. */
+  TELEGRAM_AUTH_MAX_AGE_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(24 * 60 * 60),
+  /**
+   * Список origin через запятую. Пусто — CORS выключен: в продакшене фронт и API
+   * на одном домене (nginx проксирует /api).
+   */
+  CORS_ORIGINS: z
+    .string()
+    .optional()
+    .transform((v) =>
+      (v ?? '')
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.string().url())),
   OPENAI_API_KEY: optionalSecret(),
   OPENAI_ORGANIZATION: optionalSecret(),
   OPENAI_TRANSCRIPTION_MODEL: optionalSecret(),

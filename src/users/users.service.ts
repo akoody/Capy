@@ -9,6 +9,7 @@ import { TransactionsService } from '../transactions/transactions.service';
 import { GoalsService } from '../goals/goals.service';
 import { GoalDocument } from '../goals/schemas/goal.schema';
 import { TransactionDocument } from '../transactions/schemas/transaction.schema';
+import type { TelegramUserPayload } from '../auth/telegram-init-data';
 
 @Injectable()
 export class UsersService {
@@ -157,7 +158,7 @@ export class UsersService {
     return this.userModel.findById(id).populate('achievements').populate('completedLessons').exec();
   }
 
-  async findOrCreateByTelegramUser(telegramUser: any): Promise<UserDocument> {
+  async findOrCreateByTelegramUser(telegramUser: TelegramUserPayload): Promise<UserDocument> {
     const existingUser = await this.userModel.findOne({ telegramId: telegramUser.id }).exec();
     if (existingUser) {
       existingUser.firstName = telegramUser.first_name;

@@ -10,8 +10,9 @@ import {
 import { TransactionCategoriesService } from './transaction-categories.service';
 import { CreateTransactionCategoryDto } from './dto/create-transaction-category.dto';
 import { UpdateTransactionCategoryDto } from './dto/update-transaction-category.dto';
-import { TelegramUser } from '../user.decorator';
+import { TelegramUser } from '../auth/telegram-user.decorator';
 import { UsersService } from '../users/users.service';
+import type { TelegramUserPayload } from '../auth/telegram-init-data';
 
 @Controller('transaction-categories')
 export class TransactionCategoriesController {
@@ -20,20 +21,20 @@ export class TransactionCategoriesController {
     private readonly usersService: UsersService,
   ) {}
 
-  private async userId(telegramUser: { id: number }): Promise<string> {
+  private async userId(telegramUser: TelegramUserPayload): Promise<string> {
     const user = await this.usersService.findOrCreateByTelegramUser(telegramUser);
     return user._id.toString();
   }
 
   @Get()
-  async list(@TelegramUser() telegramUser: { id: number }) {
+  async list(@TelegramUser() telegramUser: TelegramUserPayload) {
     const uid = await this.userId(telegramUser);
     return this.categoriesService.findAllForUser(uid);
   }
 
   @Post()
   async create(
-    @TelegramUser() telegramUser: { id: number },
+    @TelegramUser() telegramUser: TelegramUserPayload,
     @Body() dto: CreateTransactionCategoryDto,
   ) {
     const uid = await this.userId(telegramUser);
@@ -42,7 +43,7 @@ export class TransactionCategoriesController {
 
   @Patch(':id')
   async update(
-    @TelegramUser() telegramUser: { id: number },
+    @TelegramUser() telegramUser: TelegramUserPayload,
     @Param('id') id: string,
     @Body() dto: UpdateTransactionCategoryDto,
   ) {
@@ -52,7 +53,7 @@ export class TransactionCategoriesController {
 
   @Delete(':id')
   async remove(
-    @TelegramUser() telegramUser: { id: number },
+    @TelegramUser() telegramUser: TelegramUserPayload,
     @Param('id') id: string,
   ) {
     const uid = await this.userId(telegramUser);

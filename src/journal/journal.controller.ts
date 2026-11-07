@@ -10,8 +10,9 @@ import {
 import { JournalService } from './journal.service';
 import { CreateJournalEntryDto } from './dto/create-journal-entry.dto';
 import { UpdateJournalEntryDto } from './dto/update-journal-entry.dto';
-import { TelegramUser } from '../user.decorator';
+import { TelegramUser } from '../auth/telegram-user.decorator';
 import { UsersService } from '../users/users.service';
+import type { TelegramUserPayload } from '../auth/telegram-init-data';
 
 @Controller('journal')
 export class JournalController {
@@ -20,7 +21,7 @@ export class JournalController {
     private readonly usersService: UsersService,
   ) {}
 
-  private async getUserIdFromTelegram(telegramUser: any): Promise<string> {
+  private async getUserIdFromTelegram(telegramUser: TelegramUserPayload): Promise<string> {
     const user = await this.usersService.findOrCreateByTelegramUser(telegramUser);
     return user._id.toString();
   }
@@ -28,7 +29,7 @@ export class JournalController {
   @Post()
   async create(
     @Body() createJournalEntryDto: CreateJournalEntryDto,
-    @TelegramUser() telegramUser: any,
+    @TelegramUser() telegramUser: TelegramUserPayload,
   ) {
     try {
       const userId = await this.getUserIdFromTelegram(telegramUser);
@@ -50,7 +51,7 @@ export class JournalController {
   }
 
   @Get()
-  async findAll(@TelegramUser() telegramUser: any) {
+  async findAll(@TelegramUser() telegramUser: TelegramUserPayload) {
     const userId = await this.getUserIdFromTelegram(telegramUser);
     return this.journalService.findAllForUser(userId);
   }
@@ -58,7 +59,7 @@ export class JournalController {
   @Get(':id')
   async findOne(
     @Param('id') id: string,
-    @TelegramUser() telegramUser: any,
+    @TelegramUser() telegramUser: TelegramUserPayload,
   ) {
     const userId = await this.getUserIdFromTelegram(telegramUser);
     return this.journalService.findOne(id, userId);
@@ -67,7 +68,7 @@ export class JournalController {
   @Patch(':id')
   async update(
     @Param('id') id: string,
-    @TelegramUser() telegramUser: any,
+    @TelegramUser() telegramUser: TelegramUserPayload,
     @Body() updateJournalEntryDto: UpdateJournalEntryDto,
   ) {
     const userId = await this.getUserIdFromTelegram(telegramUser);
@@ -83,14 +84,14 @@ export class JournalController {
   @Delete(':id')
   async remove(
     @Param('id') id: string,
-    @TelegramUser() telegramUser: any,
+    @TelegramUser() telegramUser: TelegramUserPayload,
   ) {
     const userId = await this.getUserIdFromTelegram(telegramUser);
     return this.journalService.remove(id, userId);
   }
 
   @Post('analyze')
-  async analyze(@TelegramUser() telegramUser: any) {
+  async analyze(@TelegramUser() telegramUser: TelegramUserPayload) {
     const userId = await this.getUserIdFromTelegram(telegramUser);
     const analysis = await this.journalService.analyzeEntries(userId);
     return { analysis };
