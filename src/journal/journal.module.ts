@@ -1,12 +1,17 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { JournalEntry, JournalEntrySchema } from './schemas/journal-entry.schema';
+import {
+  JournalEntry,
+  JournalEntrySchema,
+} from './schemas/journal-entry.schema';
 import { JournalController } from './journal.controller';
 import { JournalService } from './journal.service';
 import { UsersModule } from '../users/users.module';
+import { LlmModule } from '../llm/llm.module';
 
 @Module({
   imports: [
+    LlmModule,
     MongooseModule.forFeature([
       { name: JournalEntry.name, schema: JournalEntrySchema },
     ]),
@@ -17,4 +22,3 @@ import { UsersModule } from '../users/users.module';
   exports: [JournalService],
 })
 export class JournalModule {}
-

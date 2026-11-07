@@ -4,5 +4,5 @@ export class UpdateGoalAmountDto {
   /** Только положительная сумма: направление задаёт маршрут deposit/withdraw. */
   @IsNumber()
   @IsPositive()
-  readonly amount: number;
+  readonly amount!: number;
 }

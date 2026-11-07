@@ -6,22 +6,22 @@ export type LessonDocument = HydratedDocument<Lesson>;
 @Schema({ _id: false })
 class Quiz {
   @Prop()
-  question: string;
+  question!: string;
 
   @Prop([String])
-  options: string[];
+  options!: string[];
 
   @Prop()
-  correctAnswer: number;
+  correctAnswer!: number;
 }
 
 @Schema({ timestamps: true })
 export class Lesson {
   @Prop({ required: true })
-  title: string;
+  title!: string;
 
   @Prop({ required: true })
-  content: string; // Markdown content
+  content!: string; // Markdown content
 
   @Prop({ type: Quiz })
   quiz?: Quiz;

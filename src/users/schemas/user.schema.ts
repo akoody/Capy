@@ -1,18 +1,16 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 import { Achievement } from '../../achievements/schemas/achievement.schema';
-import { Lesson } from '../../academy/schemas/lesson.schema';
-import { Course } from '../../academy/schemas/course.schema';
 
 export type UserDocument = HydratedDocument<User>;
 
 @Schema()
 export class User {
   @Prop({ required: true, unique: true, index: true })
-  telegramId: number;
+  telegramId!: number;
 
   @Prop()
-  firstName: string;
+  firstName!: string;
 
   @Prop()
   lastName?: string;
@@ -24,28 +22,28 @@ export class User {
   photoUrl?: string;
 
   @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Achievement' }] })
-  achievements: Achievement[];
+  achievements!: Achievement[];
 
   @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Lesson' }] })
-  completedLessons: Types.ObjectId[];
+  completedLessons!: Types.ObjectId[];
 
   @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'Course' }] })
-  completedCourses: Types.ObjectId[];
+  completedCourses!: Types.ObjectId[];
 
   @Prop({ default: 0 })
-  points: number;
+  points!: number;
 
   @Prop({ type: [String], default: [] })
-  badges: string[];
+  badges!: string[];
 
   @Prop({ type: [{ type: MongooseSchema.Types.ObjectId, ref: 'User' }] })
-  friends: User[];
+  friends!: User[];
 
   @Prop({ default: 'USD' })
-  currency: string;
+  currency!: string;
 
   @Prop({ default: 'ru' })
-  language: string;
+  language!: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

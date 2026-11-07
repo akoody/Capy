@@ -15,10 +15,10 @@ export class CreateTransactionDto {
 
   @IsNumber()
   @IsPositive()
-  readonly amount: number;
+  readonly amount!: number;
 
   @IsIn(['deposit', 'withdraw', 'income', 'expense'])
-  readonly type: string;
+  readonly type!: string;
 
   /** Текст категории (если нет categoryId). */
   @IsString()
@@ -35,5 +35,5 @@ export class CreateTransactionDto {
   readonly description?: string;
 
   @IsDateString()
-  readonly date: string;
+  readonly date!: string;
 }

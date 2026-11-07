@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsDate, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsArray } from 'class-validator';
 
 export class UpdateJournalEntryDto {
   @IsString()
@@ -13,8 +13,7 @@ export class UpdateJournalEntryDto {
   @IsOptional()
   readonly tags?: string[];
 
-  @IsDate()
+  @IsDateString()
   @IsOptional()
-  readonly date?: Date;
+  readonly date?: string;
 }
-

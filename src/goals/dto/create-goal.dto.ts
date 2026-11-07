@@ -8,11 +8,11 @@ import {
 
 export class CreateGoalDto {
   @IsString()
-  readonly name: string;
+  readonly name!: string;
 
   @IsNumber()
   @IsPositive()
-  readonly targetAmount: number;
+  readonly targetAmount!: number;
 
   @IsDate()
   @IsOptional()

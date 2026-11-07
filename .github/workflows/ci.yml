@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   api:
-    name: API (typecheck, test, build)
+    name: API (lint, typecheck, test, build)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +20,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --legacy-peer-deps
+      - run: npm run format:check
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm test -- --ci
       - run: npm run build

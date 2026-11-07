@@ -40,7 +40,7 @@ export class AcademyService {
       throw new Error('User not found');
     }
 
-    if (user.completedLessons.map(id => id.toString()).includes(lessonId)) {
+    if (user.completedLessons.map((id) => id.toString()).includes(lessonId)) {
       return user; // Lesson already completed
     }
 
@@ -50,15 +50,29 @@ export class AcademyService {
 
     const course = await this.courseModel.findOne({ lessons: lessonId });
     if (course && user) {
-      const completedLessonsInCourse = user.completedLessons.filter(completedLessonId =>
-        course.lessons.map(l => l.toString()).includes(completedLessonId.toString()),
+      const completedLessonsInCourse = user.completedLessons.filter(
+        (completedLessonId) =>
+          course.lessons
+            .map((l) => l.toString())
+            .includes(completedLessonId.toString()),
       );
 
       if (completedLessonsInCourse.length === course.lessons.length) {
-        if (user.completedCourses && !user.completedCourses.map(id => id.toString()).includes(course._id.toString())) {
-          user = await this.usersService.addCompletedCourse(userId, course._id.toString());
+        if (
+          user.completedCourses &&
+          !user.completedCourses
+            .map((id) => id.toString())
+            .includes(course._id.toString())
+        ) {
+          user = await this.usersService.addCompletedCourse(
+            userId,
+            course._id.toString(),
+          );
           if (user) {
-            user = await this.usersService.addBadge(userId, `${course.category} Graduate`);
+            user = await this.usersService.addBadge(
+              userId,
+              `${course.category} Graduate`,
+            );
           }
           if (user) {
             user = await this.usersService.addPoints(userId, 50);
@@ -66,10 +80,9 @@ export class AcademyService {
         }
       }
     }
-    
+
     // Invalidate cache for user-related data if necessary
     await this.cacheManager.del(`user_${userId}`);
-
 
     return user;
   }

@@ -10,7 +10,9 @@ export class TelegramNotifyService {
   async sendMessage(telegramId: number, text: string): Promise<boolean> {
     const token = normalizeEnvSecret(process.env.TELEGRAM_BOT_TOKEN);
     if (!token) {
-      this.logger.warn('TELEGRAM_BOT_TOKEN не задан — напоминание не отправлено');
+      this.logger.warn(
+        'TELEGRAM_BOT_TOKEN не задан — напоминание не отправлено',
+      );
       return false;
     }
     const url = `https://api.telegram.org/bot${token}/sendMessage`;
@@ -29,14 +31,14 @@ export class TelegramNotifyService {
       );
       if (res.status !== 200 || res.data?.ok === false) {
         this.logger.warn(
-          `Telegram API: ${res.status} ${res.data?.description || res.data || ''}`,
+          `Telegram API: ${res.status} ${res.data?.description ?? ''}`,
         );
         return false;
       }
       return true;
     } catch (e) {
       this.logger.warn(
-        `Telegram sendMessage failed: ${e instanceof Error ? e.message : e}`,
+        `Telegram sendMessage failed: ${e instanceof Error ? e.message : String(e)}`,
       );
       return false;
     }

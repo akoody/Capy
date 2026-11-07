@@ -32,11 +32,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       const body = exception.getResponse();
-      res.status(status).json(
-        typeof body === 'string'
-          ? { statusCode: status, message: body }
-          : { statusCode: status, ...(body as object) },
-      );
+      res
+        .status(status)
+        .json(
+          typeof body === 'string'
+            ? { statusCode: status, message: body }
+            : { statusCode: status, ...body },
+        );
       return;
     }
 

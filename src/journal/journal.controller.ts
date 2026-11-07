@@ -14,67 +14,35 @@ import { CurrentUserId } from '../auth/current-account';
 
 @Controller('journal')
 export class JournalController {
-  constructor(
-    private readonly journalService: JournalService,
-  ) {}
+  constructor(private readonly journalService: JournalService) {}
 
   @Post()
-  async create(
-    @Body() createJournalEntryDto: CreateJournalEntryDto,
-    @CurrentUserId() userId: string,
-  ) {
-    try {
-      
-      const entryData: any = {
-        ...createJournalEntryDto,
-        userId,
-      };
-      
-      if (entryData.date && typeof entryData.date === 'string') {
-        entryData.date = new Date(entryData.date);
-      }
-      
-      return this.journalService.create(entryData);
-    } catch (error) {
-      console.error('Error creating journal entry:', error);
-      throw error;
-    }
+  create(@CurrentUserId() userId: string, @Body() dto: CreateJournalEntryDto) {
+    return this.journalService.create(userId, dto);
   }
 
   @Get()
-  async findAll(@CurrentUserId() userId: string) {
+  findAll(@CurrentUserId() userId: string) {
     return this.journalService.findAllForUser(userId);
   }
 
   @Get(':id')
-  async findOne(
-    @Param('id') id: string,
-    @CurrentUserId() userId: string,
-  ) {
-    return this.journalService.findOne(id, userId);
+  findOne(@CurrentUserId() userId: string, @Param('id') id: string) {
+    return this.journalService.findOne(userId, id);
   }
 
   @Patch(':id')
-  async update(
-    @Param('id') id: string,
+  update(
     @CurrentUserId() userId: string,
-    @Body() updateJournalEntryDto: UpdateJournalEntryDto,
+    @Param('id') id: string,
+    @Body() dto: UpdateJournalEntryDto,
   ) {
-    
-    const updateData: any = { ...updateJournalEntryDto };
-    if (updateData.date && typeof updateData.date === 'string') {
-      updateData.date = new Date(updateData.date);
-    }
-    
-    return this.journalService.update(id, userId, updateData);
+    return this.journalService.update(userId, id, dto);
   }
 
   @Delete(':id')
-  async remove(
-    @Param('id') id: string,
-    @CurrentUserId() userId: string,
-  ) {
-    return this.journalService.remove(id, userId);
+  remove(@CurrentUserId() userId: string, @Param('id') id: string) {
+    return this.journalService.remove(userId, id);
   }
 
   @Post('analyze')
@@ -83,4 +51,3 @@ export class JournalController {
     return { analysis };
   }
 }
-

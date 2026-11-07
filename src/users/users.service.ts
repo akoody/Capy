@@ -1,14 +1,21 @@
-import { Injectable, Inject, forwardRef, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  forwardRef,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { isValidObjectId, Model } from 'mongoose';
 import { User, UserDocument } from './schemas/user.schema';
-import { AnalysisRequest, AnalysisRequestDocument } from './schemas/analysis-request.schema';
+import {
+  AnalysisRequest,
+  AnalysisRequestDocument,
+} from './schemas/analysis-request.schema';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import type { AccountResolver } from '../auth/current-account';
 import { AchievementsService } from '../achievements/achievements.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { GoalsService } from '../goals/goals.service';
-import { GoalDocument } from '../goals/schemas/goal.schema';
 import { TransactionDocument } from '../transactions/schemas/transaction.schema';
 import type { TelegramUserPayload } from '../auth/telegram-init-data';
 
@@ -16,10 +23,13 @@ import type { TelegramUserPayload } from '../auth/telegram-init-data';
 export class UsersService implements AccountResolver {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-    @InjectModel(AnalysisRequest.name) private analysisRequestModel: Model<AnalysisRequestDocument>,
+    @InjectModel(AnalysisRequest.name)
+    private analysisRequestModel: Model<AnalysisRequestDocument>,
     private readonly achievementsService: AchievementsService,
-    @Inject(forwardRef(() => TransactionsService)) private readonly transactionsService: TransactionsService,
-    @Inject(forwardRef(() => GoalsService)) private readonly goalsService: GoalsService,
+    @Inject(forwardRef(() => TransactionsService))
+    private readonly transactionsService: TransactionsService,
+    @Inject(forwardRef(() => GoalsService))
+    private readonly goalsService: GoalsService,
   ) {}
 
   async exportData(userId: string): Promise<string> {
@@ -29,8 +39,10 @@ export class UsersService implements AccountResolver {
     let csv = 'Date,Goal,Transaction Type,Amount\n';
 
     for (const transaction of transactions) {
-      const goal = goals.find(g => (g as GoalDocument)._id.toString() === String(transaction.goal));
-      const date = (transaction as any).createdAt.toISOString().split('T')[0];
+      const goal = transaction.goal
+        ? goals.find((g) => g._id.equals(transaction.goal))
+        : undefined;
+      const date = transaction.createdAt.toISOString().split('T')[0];
       const goalName = goal ? goal.name : 'N/A';
       csv += `${date},${goalName},${transaction.type},${transaction.amount}\n`;
     }
@@ -87,12 +99,17 @@ export class UsersService implements AccountResolver {
     return { streak: currentStreak };
   }
 
-  async completeLesson(userId: string, lessonId: string): Promise<UserDocument | null> {
-    return this.userModel.findByIdAndUpdate(
-      userId,
-      { $addToSet: { completedLessons: lessonId } },
-      { new: true },
-    ).exec();
+  async completeLesson(
+    userId: string,
+    lessonId: string,
+  ): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(
+        userId,
+        { $addToSet: { completedLessons: lessonId } },
+        { new: true },
+      )
+      .exec();
   }
 
   async grantAchievement(userId: string, achievementKey: string) {
@@ -109,36 +126,49 @@ export class UsersService implements AccountResolver {
       .exec();
   }
 
-  async addPoints(userId: string, points: number): Promise<UserDocument | null> {
-    return this.userModel.findByIdAndUpdate(
-      userId,
-      { $inc: { points: points } },
-      { new: true },
-    ).exec();
+  async addPoints(
+    userId: string,
+    points: number,
+  ): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(userId, { $inc: { points: points } }, { new: true })
+      .exec();
   }
 
   async addBadge(userId: string, badge: string): Promise<UserDocument | null> {
-    return this.userModel.findByIdAndUpdate(
-      userId,
-      { $addToSet: { badges: badge } },
-      { new: true },
-    ).exec();
+    return this.userModel
+      .findByIdAndUpdate(
+        userId,
+        { $addToSet: { badges: badge } },
+        { new: true },
+      )
+      .exec();
   }
 
-  async addCompletedCourse(userId: string, courseId: string): Promise<UserDocument | null> {
-    return this.userModel.findByIdAndUpdate(
-      userId,
-      { $addToSet: { completedCourses: courseId } },
-      { new: true },
-    ).exec();
+  async addCompletedCourse(
+    userId: string,
+    courseId: string,
+  ): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(
+        userId,
+        { $addToSet: { completedCourses: courseId } },
+        { new: true },
+      )
+      .exec();
   }
 
-  async addFriend(userId: string, friendId: string): Promise<UserDocument | null> {
-    return this.userModel.findByIdAndUpdate(
-      userId,
-      { $addToSet: { friends: friendId } },
-      { new: true },
-    ).exec();
+  async addFriend(
+    userId: string,
+    friendId: string,
+  ): Promise<UserDocument | null> {
+    return this.userModel
+      .findByIdAndUpdate(
+        userId,
+        { $addToSet: { friends: friendId } },
+        { new: true },
+      )
+      .exec();
   }
 
   async existsById(userId: string): Promise<boolean> {
@@ -151,7 +181,7 @@ export class UsersService implements AccountResolver {
       .findById(userId)
       .populate('friends', 'firstName username photoUrl points')
       .exec();
-    return user ? user.friends as UserDocument[] : [];
+    return user ? (user.friends as UserDocument[]) : [];
   }
 
   /** Топ-10 по очкам: только публичные поля, без telegramId, друзей и настроек. */
@@ -190,11 +220,19 @@ export class UsersService implements AccountResolver {
   }
 
   async findById(id: string): Promise<UserDocument | null> {
-    return this.userModel.findById(id).populate('achievements').populate('completedLessons').exec();
+    return this.userModel
+      .findById(id)
+      .populate('achievements')
+      .populate('completedLessons')
+      .exec();
   }
 
-  async findOrCreateByTelegramUser(telegramUser: TelegramUserPayload): Promise<UserDocument> {
-    const existingUser = await this.userModel.findOne({ telegramId: telegramUser.id }).exec();
+  async findOrCreateByTelegramUser(
+    telegramUser: TelegramUserPayload,
+  ): Promise<UserDocument> {
+    const existingUser = await this.userModel
+      .findOne({ telegramId: telegramUser.id })
+      .exec();
     if (existingUser) {
       existingUser.firstName = telegramUser.first_name;
       existingUser.lastName = telegramUser.last_name;
@@ -235,7 +273,10 @@ export class UsersService implements AccountResolver {
       .exec();
   }
 
-  async checkAnalysisLimit(userId: string, type: 'transactions' | 'savings'): Promise<void> {
+  async checkAnalysisLimit(
+    userId: string,
+    type: 'transactions' | 'savings',
+  ): Promise<void> {
     let userObjectId: string;
     if (userId.match(/^[0-9a-fA-F]{24}$/)) {
       userObjectId = userId;
@@ -259,12 +300,15 @@ export class UsersService implements AccountResolver {
 
     if (recentRequests >= 3) {
       throw new BadRequestException(
-        `Превышен лимит анализов. Вы можете выполнить максимум 3 анализа ${type === 'transactions' ? 'транзакций' : 'накоплений'} за 2 часа. Пожалуйста, подождите.`
+        `Превышен лимит анализов. Вы можете выполнить максимум 3 анализа ${type === 'transactions' ? 'транзакций' : 'накоплений'} за 2 часа. Пожалуйста, подождите.`,
       );
     }
   }
 
-  async recordAnalysisRequest(userId: string, type: 'transactions' | 'savings'): Promise<void> {
+  async recordAnalysisRequest(
+    userId: string,
+    type: 'transactions' | 'savings',
+  ): Promise<void> {
     let userObjectId: string;
     if (userId.match(/^[0-9a-fA-F]{24}$/)) {
       userObjectId = userId;

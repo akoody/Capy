@@ -2,9 +2,7 @@ import { IsString, IsOptional, IsDateString, IsArray } from 'class-validator';
 
 export class CreateJournalEntryDto {
   @IsString()
-  readonly content: string;
-
-  userId?: string;
+  readonly content!: string;
 
   @IsString()
   @IsOptional()
@@ -16,6 +14,5 @@ export class CreateJournalEntryDto {
 
   @IsDateString()
   @IsOptional()
-  readonly date?: string | Date;
+  readonly date?: string;
 }
-

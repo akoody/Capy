@@ -1,8 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import axios from 'axios';
 import FormData from 'form-data';
-import * as https from 'https';
-import * as crypto from 'crypto';
 import { UsersService } from '../users/users.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { TransactionCategoriesService } from '../transactions/transaction-categories.service';
@@ -21,7 +19,33 @@ import {
 import type { UploadedAudioFile } from './uploaded-audio-file';
 import { normalizeAudioForWhisper } from './normalize-audio-for-whisper';
 import { normalizeEnvSecret } from '../env-secrets';
-import "dotenv/config";
+import { LlmService } from '../llm/llm.service';
+import { LlmUnavailableError } from '../llm/llm.types';
+
+/**
+ * Строка из значения JSON, пришедшего от модели. Объекты и массивы считаются
+ * отсутствующим значением, а не превращаются в «[object Object]».
+ */
+function textOf(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  return '';
+}
+
+/** Сообщение об ошибке от axios/HTTP API или обычного Error. */
+function errorMessage(error: unknown): string | undefined {
+  if (axios.isAxiosError<{ error?: { message?: string } }>(error)) {
+    return error.response?.data?.error?.message ?? error.message;
+  }
+  return error instanceof Error ? error.message : undefined;
+}
+
+interface TranscriptionResponse {
+  text?: string;
+  error?: { message?: string };
+}
 
 @Injectable()
 export class AssistantService {
@@ -34,6 +58,7 @@ export class AssistantService {
     private readonly transactionCategoriesService: TransactionCategoriesService,
     private readonly journalService: JournalService,
     private readonly budgetsService: BudgetsService,
+    private readonly llm: LlmService,
   ) {}
 
   async processVoiceCommand(
@@ -168,15 +193,18 @@ export class AssistantService {
           message?: string;
         };
         const errMsg =
-          e?.response?.data?.message || e?.message || 'Не удалось выполнить команду';
-        const short =
-          typeof errMsg === 'string' ? errMsg : 'Ошибка выполнения';
+          e?.response?.data?.message ||
+          e?.message ||
+          'Не удалось выполнить команду';
+        const short = typeof errMsg === 'string' ? errMsg : 'Ошибка выполнения';
         parts.push(`Не записано (${this.opShortLabel(op)}): ${short}`);
         lastError = short;
       }
     }
 
-    const successCount = parts.filter((p) => !p.startsWith('Не записано')).length;
+    const successCount = parts.filter(
+      (p) => !p.startsWith('Не записано'),
+    ).length;
     const allOk = successCount === ready.length;
 
     let message: string;
@@ -407,8 +435,8 @@ export class AssistantService {
     if (openaiKey) {
       try {
         return await this.transcribeWithOpenAI(ready, openaiKey);
-      } catch (e: any) {
-        const msg = e?.response?.data?.error?.message || e?.message;
+      } catch (e: unknown) {
+        const msg = errorMessage(e);
         const groqKey = normalizeEnvSecret(process.env.GROQ_API_KEY);
         let failText = typeof msg === 'string' ? msg : '';
         if (e instanceof BadRequestException) {
@@ -433,11 +461,8 @@ export class AssistantService {
         if (groqKey) {
           try {
             return await this.transcribeWithGroq(ready, groqKey);
-          } catch (gErr: any) {
-            const gMsg =
-              gErr?.response?.data?.error?.message ||
-              gErr?.message ||
-              'Groq Whisper';
+          } catch (gErr: unknown) {
+            const gMsg = errorMessage(gErr) || 'Groq Whisper';
             throw new BadRequestException(
               `OpenAI: ${typeof msg === 'string' ? msg : 'ошибка'}. Groq: ${String(gMsg).slice(0, 280)}`,
             );
@@ -457,11 +482,8 @@ export class AssistantService {
     if (groqKeyOnly) {
       try {
         return await this.transcribeWithGroq(ready, groqKeyOnly);
-      } catch (gErr: any) {
-        const gMsg =
-          gErr?.response?.data?.error?.message ||
-          gErr?.message ||
-          'ошибка Groq';
+      } catch (gErr: unknown) {
+        const gMsg = errorMessage(gErr) || 'ошибка Groq';
         throw new BadRequestException(String(gMsg).slice(0, 400));
       }
     }
@@ -492,7 +514,7 @@ export class AssistantService {
       headers['OpenAI-Organization'] = openaiOrg;
     }
 
-    const response = await axios.post(
+    const response = await axios.post<TranscriptionResponse>(
       'https://api.openai.com/v1/audio/transcriptions',
       form,
       {
@@ -531,7 +553,7 @@ export class AssistantService {
     const form = this.buildTranscriptionForm(file);
     form.append('model', 'whisper-large-v3');
 
-    const response = await axios.post(
+    const response = await axios.post<TranscriptionResponse>(
       'https://api.groq.com/openai/v1/audio/transcriptions',
       form,
       {
@@ -547,7 +569,9 @@ export class AssistantService {
     );
 
     if (response.status === 401 || response.status === 403) {
-      throw new BadRequestException('Ошибка авторизации Groq (проверьте GROQ_API_KEY)');
+      throw new BadRequestException(
+        'Ошибка авторизации Groq (проверьте GROQ_API_KEY)',
+      );
     }
     if (response.status !== 200) {
       throw new BadRequestException(
@@ -600,7 +624,10 @@ export class AssistantService {
 
     const openTaskTitles = await this.tasksService.findOpenTitles(userId, 25);
     const goals = await this.goalsService.findAllForUser(userId);
-    const goalTitles = goals.map((g) => g.name).filter(Boolean).slice(0, 40);
+    const goalTitles = goals
+      .map((g) => g.name)
+      .filter(Boolean)
+      .slice(0, 40);
     const categoryCatalog =
       await this.transactionCategoriesService.listForVoiceContext(userId, 60);
     return {
@@ -639,7 +666,9 @@ export class AssistantService {
                   : c.kind === 'income'
                     ? 'только доход'
                     : 'расход и доход';
-              const hint = c.description ? ` | подсказка: ${c.description}` : '';
+              const hint = c.description
+                ? ` | подсказка: ${c.description}`
+                : '';
               return `«${c.name}» (${kindRu})${hint}`;
             })
             .join('\n')
@@ -829,25 +858,16 @@ ${catLine}
 
     let raw: string;
     try {
-      raw = await this.completeInterpretOpenAI(userMsg, system);
-    } catch {
-      try {
-        raw = await this.completeInterpretGigaChat(userMsg, system);
-      } catch {
-        try {
-          raw = await this.completeInterpretGemini(userMsg, system);
-        } catch {
-          try {
-            raw = await this.completeInterpretDeepSeek(userMsg, system);
-          } catch {
-            try {
-              raw = await this.completeInterpretGroq(userMsg, system);
-            } catch {
-              throw new Error('ALL_AI_FAILED');
-            }
-          }
-        }
+      raw = await this.llm.complete(
+        { system, user: userMsg },
+        { temperature: 0.2, maxTokens: 2000, jsonObject: true },
+        'interpret',
+      );
+    } catch (error) {
+      if (error instanceof LlmUnavailableError) {
+        throw new Error('ALL_AI_FAILED');
       }
+      throw error;
     }
 
     return this.safeParseInterpret(raw, ctx.today);
@@ -857,7 +877,7 @@ ${catLine}
     data: Record<string, unknown>,
     today: string,
   ): VoiceInterpretResult {
-    const intentRaw = String(data.intent || 'unknown');
+    const intentRaw = textOf(data.intent) || 'unknown';
     const allowed: VoiceIntent[] = [
       'create_expense',
       'create_income',
@@ -883,16 +903,13 @@ ${catLine}
       ? (intentRaw as VoiceIntent)
       : 'unknown';
 
-    const confidence = Math.min(
-      1,
-      Math.max(0, Number(data.confidence) || 0),
-    );
+    const confidence = Math.min(1, Math.max(0, Number(data.confidence) || 0));
     let amount: number | null =
       typeof data.amount === 'number' && !Number.isNaN(data.amount)
         ? data.amount
         : null;
     if (amount === null && data.amount != null) {
-      const n = parseFloat(String(data.amount).replace(',', '.'));
+      const n = parseFloat(textOf(data.amount).replace(',', '.'));
       amount = !Number.isNaN(n) ? n : null;
     }
     if (amount !== null) {
@@ -900,17 +917,17 @@ ${catLine}
     }
 
     const category =
-      data.category != null && String(data.category).trim()
-        ? String(data.category).trim()
+      data.category != null && textOf(data.category).trim()
+        ? textOf(data.category).trim()
         : null;
     const description =
-      data.description != null && String(data.description).trim()
-        ? String(data.description).trim()
+      data.description != null && textOf(data.description).trim()
+        ? textOf(data.description).trim()
         : null;
 
     let date =
-      data.date != null && String(data.date).trim()
-        ? String(data.date).trim().slice(0, 10)
+      data.date != null && textOf(data.date).trim()
+        ? textOf(data.date).trim().slice(0, 10)
         : null;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) {
       date = today;
@@ -918,15 +935,15 @@ ${catLine}
 
     const affect_wallet = Boolean(data.affect_wallet);
     const reply_hint =
-      data.reply_hint != null ? String(data.reply_hint).trim() : '';
+      data.reply_hint != null ? textOf(data.reply_hint).trim() : '';
 
     const goal_name =
-      data.goal_name != null && String(data.goal_name).trim()
-        ? String(data.goal_name).trim()
+      data.goal_name != null && textOf(data.goal_name).trim()
+        ? textOf(data.goal_name).trim()
         : null;
     const task_title =
-      data.task_title != null && String(data.task_title).trim()
-        ? String(data.task_title).trim()
+      data.task_title != null && textOf(data.task_title).trim()
+        ? textOf(data.task_title).trim()
         : null;
     const pr = data.priority;
     let priority: 'low' | 'medium' | 'high' | null = null;
@@ -934,40 +951,39 @@ ${catLine}
       priority = pr;
     }
     const reminder_at =
-      data.reminder_at != null && String(data.reminder_at).trim()
-        ? String(data.reminder_at).trim()
+      data.reminder_at != null && textOf(data.reminder_at).trim()
+        ? textOf(data.reminder_at).trim()
         : null;
     let reminder_times: string[] | null = null;
     if (Array.isArray(data.reminder_times)) {
       const arr = data.reminder_times
-        .map((x) => String(x).trim())
+        .map((x) => textOf(x).trim())
         .filter(Boolean);
       reminder_times = arr.length > 0 ? arr : null;
     }
 
     const journal_content =
-      data.journal_content != null && String(data.journal_content).trim()
-        ? String(data.journal_content).trim()
+      data.journal_content != null && textOf(data.journal_content).trim()
+        ? textOf(data.journal_content).trim()
         : null;
     const journal_title =
-      data.journal_title != null && String(data.journal_title).trim()
-        ? String(data.journal_title).trim()
+      data.journal_title != null && textOf(data.journal_title).trim()
+        ? textOf(data.journal_title).trim()
         : null;
     let journal_tags: string[] | null = null;
     if (Array.isArray(data.journal_tags)) {
       const arr = data.journal_tags
-        .map((x) => String(x).trim())
+        .map((x) => textOf(x).trim())
         .filter(Boolean);
       journal_tags = arr.length > 0 ? arr : null;
     }
 
     const budget_name =
-      data.budget_name != null && String(data.budget_name).trim()
-        ? String(data.budget_name).trim()
+      data.budget_name != null && textOf(data.budget_name).trim()
+        ? textOf(data.budget_name).trim()
         : null;
     const bp = data.budget_period;
-    const budget_period =
-      bp === 'weekly' || bp === 'monthly' ? bp : null;
+    const budget_period = bp === 'weekly' || bp === 'monthly' ? bp : null;
 
     const ck = data.category_kind;
     const category_kind =
@@ -983,8 +999,8 @@ ${catLine}
         : null;
 
     const new_task_title =
-      data.new_task_title != null && String(data.new_task_title).trim()
-        ? String(data.new_task_title).trim()
+      data.new_task_title != null && textOf(data.new_task_title).trim()
+        ? textOf(data.new_task_title).trim()
         : null;
 
     return {
@@ -1062,9 +1078,7 @@ ${catLine}
     if (data && typeof data === 'object' && data !== null) {
       const obj = data as Record<string, unknown>;
       const batch_reply_hint =
-        obj.batch_reply_hint != null
-          ? String(obj.batch_reply_hint).trim()
-          : '';
+        obj.batch_reply_hint != null ? textOf(obj.batch_reply_hint).trim() : '';
 
       const opsRaw = obj.operations ?? obj.items;
       if (Array.isArray(opsRaw)) {
@@ -1133,7 +1147,13 @@ ${catLine}
       category?: string;
       description?: string;
     },
-  ): Promise<{ _id: { toString: () => string }; amount: number; type: string; category: string; description?: string } | null> {
+  ): Promise<{
+    _id: { toString: () => string };
+    amount: number;
+    type: string;
+    category: string;
+    description?: string;
+  } | null> {
     const all = await this.transactionsService.findAllForUser(userId);
     const lines = all.filter(
       (tx) => tx.type === 'expense' || tx.type === 'income',
@@ -1212,9 +1232,7 @@ ${catLine}
       const pig = await this.piggyBankService.findOneByUser(userMongoId);
       const bal = pig?.amount ?? 0;
       return {
-        message:
-          p.reply_hint?.trim() ||
-          `На кошельке ${bal} ${cur}`,
+        message: p.reply_hint?.trim() || `На кошельке ${bal} ${cur}`,
       };
     }
 
@@ -1223,8 +1241,7 @@ ${catLine}
       if (!content) {
         throw new BadRequestException('Пустой текст записи');
       }
-      await this.journalService.create({
-        userId: userMongoId,
+      await this.journalService.create(userMongoId, {
         content,
         title: p.journal_title?.trim() || undefined,
         tags: p.journal_tags?.length ? p.journal_tags : undefined,
@@ -1481,12 +1498,11 @@ ${catLine}
     }
 
     if (p.intent === 'create_expense') {
-      const category =
-        await this.transactionCategoriesService.resolveForVoice(
-          userMongoId,
-          'expense',
-          p.category,
-        );
+      const category = await this.transactionCategoriesService.resolveForVoice(
+        userMongoId,
+        'expense',
+        p.category,
+      );
       let desc = p.description || '';
       if (p.affect_wallet) {
         desc = `${desc ? desc + ' ' : ''}(списано с кошелька)`;
@@ -1510,17 +1526,16 @@ ${catLine}
         message:
           p.reply_hint ||
           `Записал расход ${amount} ${category}${p.affect_wallet ? ', списано с кошелька' : ''}`,
-        transactionId: String((tx as any)._id),
+        transactionId: String(tx._id),
       };
     }
 
     if (p.intent === 'create_income') {
-      const category =
-        await this.transactionCategoriesService.resolveForVoice(
-          userMongoId,
-          'income',
-          p.category,
-        );
+      const category = await this.transactionCategoriesService.resolveForVoice(
+        userMongoId,
+        'income',
+        p.category,
+      );
       let desc = p.description || '';
       if (p.affect_wallet) {
         desc = `${desc ? desc + ' ' : ''}(пополнено в кошелек)`;
@@ -1539,7 +1554,7 @@ ${catLine}
         message:
           p.reply_hint ||
           `Записал доход ${amount}${p.affect_wallet ? ', пополнен кошелёк' : ''}`,
-        transactionId: String((tx as any)._id),
+        transactionId: String(tx._id),
       };
     }
 
@@ -1547,241 +1562,4 @@ ${catLine}
   }
 
   // --- LLM providers (compact, interpret-only) ---
-
-  private async completeInterpretOpenAI(
-    userMessage: string,
-    systemMessage: string,
-  ): Promise<string> {
-    const openaiKey = normalizeEnvSecret(process.env.OPENAI_API_KEY);
-    if (!openaiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${openaiKey}`,
-    };
-    const openaiOrg = normalizeEnvSecret(process.env.OPENAI_ORGANIZATION);
-    if (openaiOrg) {
-      headers['OpenAI-Organization'] = openaiOrg;
-    }
-    /** Разбор текста в JSON: по умолчанию gpt-4o-mini (быстрее). gpt-5.*: reasoning_effort none. Иначе: OPENAI_INTERPRET_MODEL */
-    const interpretModel =
-      (process.env.OPENAI_INTERPRET_MODEL || '').trim() || 'gpt-4o-mini';
-    const body: Record<string, unknown> = {
-      model: interpretModel,
-      messages: [
-        { role: 'system', content: systemMessage },
-        { role: 'user', content: userMessage },
-      ],
-      temperature: 0.2,
-      max_tokens: 2000,
-      response_format: { type: 'json_object' },
-    };
-    if (interpretModel.startsWith('gpt-5')) {
-      body.reasoning_effort = 'none';
-      body.verbosity = 'low';
-    }
-    const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
-      body,
-      {
-        headers,
-        timeout: 60000,
-        validateStatus: (status) => status < 500,
-      },
-    );
-    if (response.status !== 200) {
-      const msg = response.data?.error?.message;
-      throw new Error(
-        typeof msg === 'string' && msg.trim()
-          ? `OpenAI: ${msg.trim()}`
-          : `OpenAI ${response.status}`,
-      );
-    }
-    const content = response.data?.choices?.[0]?.message?.content;
-    if (typeof content !== 'string' || !content.trim()) {
-      throw new Error('OpenAI empty response');
-    }
-    return content.trim();
-  }
-
-  private async completeInterpretGroq(
-    userMessage: string,
-    systemMessage: string,
-  ): Promise<string> {
-    const groqApiKey = process.env.GROQ_API_KEY;
-    if (!groqApiKey) {
-      throw new Error('Groq API key not configured');
-    }
-    const response = await axios.post(
-      'https://api.groq.com/openai/v1/chat/completions',
-      {
-        model: 'llama-3.1-8b-instant',
-        messages: [
-          { role: 'system', content: systemMessage },
-          { role: 'user', content: userMessage },
-        ],
-        temperature: 0.2,
-        max_tokens: 2000,
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${groqApiKey}`,
-        },
-        timeout: 30000,
-        validateStatus: (status) => status < 500,
-      },
-    );
-    if (response.status !== 200) {
-      throw new Error(`Groq ${response.status}`);
-    }
-    return response.data.choices[0].message.content.trim();
-  }
-
-  private async completeInterpretDeepSeek(
-    userMessage: string,
-    systemMessage: string,
-  ): Promise<string> {
-    const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
-    if (!deepseekApiKey) {
-      throw new Error('DeepSeek API key not configured');
-    }
-    const response = await axios.post(
-      'https://api.deepseek.com/v1/chat/completions',
-      {
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemMessage },
-          { role: 'user', content: userMessage },
-        ],
-        temperature: 0.2,
-        max_tokens: 2000,
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${deepseekApiKey}`,
-        },
-        timeout: 30000,
-        validateStatus: (status) => status < 500,
-      },
-    );
-    if (response.status !== 200) {
-      throw new Error(`DeepSeek ${response.status}`);
-    }
-    return response.data.choices[0].message.content.trim();
-  }
-
-  private async completeInterpretGemini(
-    userMessage: string,
-    systemMessage: string,
-  ): Promise<string> {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('Gemini API key not configured');
-    }
-    const model = 'gemini-1.5-flash';
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        contents: [
-          {
-            parts: [{ text: `${systemMessage}\n\n${userMessage}` }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 2000,
-        },
-      },
-      {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 60000,
-      },
-    );
-    const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      throw new Error('Gemini empty');
-    }
-    return text.trim();
-  }
-
-  private prepareGigaChatMessages(
-    message: string,
-    systemPrompt?: string,
-  ): Array<{ role: string; content: string }> {
-    const messages: Array<{ role: string; content: string }> = [];
-    if (systemPrompt) {
-      messages.push({ role: 'system', content: systemPrompt });
-    }
-    messages.push({ role: 'user', content: message });
-    return messages;
-  }
-
-  private async getGigaChatAccessToken(apiKey: string): Promise<string> {
-    let accessToken = (this as any)._gigaInterpretToken;
-    let tokenExpiry = (this as any)._gigaInterpretTokenExpiry;
-
-    if (accessToken && tokenExpiry && Date.now() < tokenExpiry) {
-      return accessToken;
-    }
-
-    const agent = new https.Agent({ rejectUnauthorized: false });
-    let encodedKey = apiKey;
-    if (apiKey.includes(':') && !apiKey.startsWith('Basic ')) {
-      encodedKey = Buffer.from(apiKey).toString('base64');
-    }
-
-    const response = await axios.post(
-      'https://ngw.devices.sberbank.ru:9443/api/v2/oauth',
-      'scope=GIGACHAT_API_PERS',
-      {
-        headers: {
-          Authorization: `Basic ${encodedKey}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Accept: 'application/json',
-          RqUID: crypto.randomUUID(),
-        },
-        timeout: 30000,
-        httpsAgent: agent,
-      },
-    );
-
-    accessToken = response.data.access_token;
-    tokenExpiry = Date.now() + response.data.expires_in * 1000 - 60000;
-    (this as any)._gigaInterpretToken = accessToken;
-    (this as any)._gigaInterpretTokenExpiry = tokenExpiry;
-    return accessToken;
-  }
-
-  private async completeInterpretGigaChat(
-    userMessage: string,
-    systemMessage: string,
-  ): Promise<string> {
-    const apiKey = process.env.GIGACHAT_API_KEY;
-    if (!apiKey) {
-      throw new Error('GigaChat API key not configured');
-    }
-    const accessToken = await this.getGigaChatAccessToken(apiKey);
-    const agent = new https.Agent({ rejectUnauthorized: false });
-    const response = await axios.post(
-      'https://gigachat.devices.sberbank.ru/api/v1/chat/completions',
-      {
-        model: 'GigaChat:latest',
-        messages: this.prepareGigaChatMessages(userMessage, systemMessage),
-        max_tokens: 2000,
-        temperature: 0.2,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 120000,
-        httpsAgent: agent,
-      },
-    );
-    return response.data.choices[0].message.content.trim();
-  }
 }

@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { isValidObjectId, Model, Types } from 'mongoose';
+import { isValidObjectId, Model } from 'mongoose';
 import { orNotFound } from '../common/owned-by';
 import { UsersService } from '../users/users.service';
 import {
@@ -54,10 +54,7 @@ export class FriendsService {
   /** Принять может только получатель и только ожидающую заявку. */
   async accept(userId: string, id: string): Promise<FriendRequest> {
     const request = await this.respond(userId, id, 'accepted');
-    // requester не populated: в документе лежит ObjectId.
-    const requester = (
-      request.requester as unknown as Types.ObjectId
-    ).toHexString();
+    const requester = request.requester.toHexString();
     await this.usersService.addFriend(requester, userId);
     await this.usersService.addFriend(userId, requester);
     return request;

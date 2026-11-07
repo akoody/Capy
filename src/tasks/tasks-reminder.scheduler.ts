@@ -20,7 +20,7 @@ export class TasksReminderScheduler {
       );
     } catch (e) {
       this.logger.warn(
-        `processDueReminders: ${e instanceof Error ? e.message : e}`,
+        `processDueReminders: ${e instanceof Error ? e.message : String(e)}`,
       );
     }
   }

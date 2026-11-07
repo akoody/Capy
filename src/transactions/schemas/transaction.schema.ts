@@ -1,34 +1,32 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
-import { User } from '../../users/schemas/user.schema';
-import { Goal } from '../../goals/schemas/goal.schema';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 export type TransactionDocument = HydratedDocument<Transaction>;
 
 @Schema({ timestamps: true })
 export class Transaction {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
-  user: User;
+  user!: Types.ObjectId;
 
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Goal' })
-  goal?: Goal;
+  goal?: Types.ObjectId;
 
   @Prop({ required: true })
-  amount: number;
+  amount!: number;
 
   @Prop({ required: true, enum: ['deposit', 'withdraw', 'income', 'expense'] })
-  type: string;
+  type!: string;
 
   @Prop({ required: true })
-  category: string;
+  category!: string;
 
   @Prop()
   description?: string;
 
   @Prop({ required: true })
-  date: Date;
+  date!: Date;
 
-  createdAt: Date;
+  createdAt!: Date;
 }
 
 export const TransactionSchema = SchemaFactory.createForClass(Transaction);

@@ -41,10 +41,7 @@ export class TransactionCategoriesController {
   }
 
   @Delete(':id')
-  async remove(
-    @CurrentUserId() userId: string,
-    @Param('id') id: string,
-  ) {
+  async remove(@CurrentUserId() userId: string, @Param('id') id: string) {
     await this.categoriesService.remove(userId, id);
     return { ok: true };
   }
