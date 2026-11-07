@@ -40,7 +40,7 @@ const WalletHistoryModal = ({ isOpen, onClose, userId, transactions: preloadedTr
   const fetchTransactions = async () => {
     try {
       if (userId) {
-        const response = await api.get(`/transactions?userId=${userId}`);
+        const response = await api.get('/transactions');
         const allTx = response.data as Transaction[];
         
         // Filter wallet-related transactions

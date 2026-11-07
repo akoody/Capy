@@ -2,6 +2,7 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   SetMetadata,
@@ -9,26 +10,24 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
-import type { Request } from 'express';
 import type { AppEnv } from '../config/env.schema';
 import {
-  TelegramUserPayload,
-  verifyTelegramInitData,
-} from './telegram-init-data';
+  ACCOUNT_RESOLVER,
+  type AccountResolver,
+  type AuthenticatedRequest,
+} from './current-account';
+import { verifyTelegramInitData } from './telegram-init-data';
 
 export const IS_PUBLIC_KEY = 'capy:isPublic';
 /** Маршрут без авторизации (health-check и т. п.). */
 export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
 
-export interface AuthenticatedRequest extends Request {
-  telegramUser: TelegramUserPayload;
-}
-
 const SCHEME = 'tma ';
 
 /**
  * Глобальный guard: каждый запрос должен нести `Authorization: tma <initData>`
- * с подписью бота из TELEGRAM_BOT_TOKEN.
+ * с подписью бота из TELEGRAM_BOT_TOKEN. После проверки guard кладёт в запрос
+ * пользователя Telegram и аккаунт Capy (`request.account`).
  */
 @Injectable()
 export class TelegramAuthGuard implements CanActivate {
@@ -37,9 +36,10 @@ export class TelegramAuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly config: ConfigService<AppEnv, true>,
+    @Inject(ACCOUNT_RESOLVER) private readonly accounts: AccountResolver,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -70,6 +70,10 @@ export class TelegramAuthGuard implements CanActivate {
     }
 
     request.telegramUser = result.user;
+    request.account = {
+      userId: await this.accounts.resolveAccountId(result.user),
+      telegramId: result.user.id,
+    };
     return true;
   }
 }

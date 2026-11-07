@@ -40,7 +40,6 @@ const PiggyBankModal = ({ isOpen, onClose, onSuccess, userId }: PiggyBankModalPr
       // Update piggy bank balance
       await api.patch(`/piggy-bank/${mode}`,
         {
-          userId,
           amount: Number(amount),
         },
       );
@@ -48,7 +47,6 @@ const PiggyBankModal = ({ isOpen, onClose, onSuccess, userId }: PiggyBankModalPr
       // Create a transaction for wallet history
       try {
         await api.post('/transactions', {
-          user: userId,
           type: mode, // 'deposit' or 'withdraw'
           amount: Number(amount),
           category: t('piggy_bank'),

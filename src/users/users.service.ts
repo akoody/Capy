@@ -1,9 +1,10 @@
 import { Injectable, Inject, forwardRef, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { isValidObjectId, Model } from 'mongoose';
 import { User, UserDocument } from './schemas/user.schema';
 import { AnalysisRequest, AnalysisRequestDocument } from './schemas/analysis-request.schema';
-import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import type { AccountResolver } from '../auth/current-account';
 import { AchievementsService } from '../achievements/achievements.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { GoalsService } from '../goals/goals.service';
@@ -12,7 +13,7 @@ import { TransactionDocument } from '../transactions/schemas/transaction.schema'
 import type { TelegramUserPayload } from '../auth/telegram-init-data';
 
 @Injectable()
-export class UsersService {
+export class UsersService implements AccountResolver {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(AnalysisRequest.name) private analysisRequestModel: Model<AnalysisRequestDocument>,
@@ -28,7 +29,7 @@ export class UsersService {
     let csv = 'Date,Goal,Transaction Type,Amount\n';
 
     for (const transaction of transactions) {
-      const goal = goals.find(g => (g as GoalDocument)._id.toString() === (transaction.goal as any).toString());
+      const goal = goals.find(g => (g as GoalDocument)._id.toString() === String(transaction.goal));
       const date = (transaction as any).createdAt.toISOString().split('T')[0];
       const goalName = goal ? goal.name : 'N/A';
       csv += `${date},${goalName},${transaction.type},${transaction.amount}\n`;
@@ -140,18 +141,52 @@ export class UsersService {
     ).exec();
   }
 
+  async existsById(userId: string): Promise<boolean> {
+    if (!isValidObjectId(userId)) return false;
+    return (await this.userModel.exists({ _id: userId })) !== null;
+  }
+
   async getFriends(userId: string): Promise<UserDocument[]> {
-    const user = await this.userModel.findById(userId).populate('friends').exec();
+    const user = await this.userModel
+      .findById(userId)
+      .populate('friends', 'firstName username photoUrl points')
+      .exec();
     return user ? user.friends as UserDocument[] : [];
   }
 
-  async getLeaderboard(): Promise<UserDocument[]> {
-    return this.userModel.find().sort({ points: -1 }).limit(10).exec();
+  /** Топ-10 по очкам: только публичные поля, без telegramId, друзей и настроек. */
+  async getLeaderboard() {
+    return this.userModel
+      .find()
+      .select({ firstName: 1, username: 1, photoUrl: 1, points: 1 })
+      .sort({ points: -1 })
+      .limit(10)
+      .lean()
+      .exec();
   }
 
-  async create(createUserDto: CreateUserDto): Promise<UserDocument> {
-    const createdUser = new this.userModel(createUserDto);
-    return createdUser.save();
+  /**
+   * Id аккаунта для проверенного пользователя Telegram. Один атомарный upsert:
+   * параллельные первые запросы не создают дублей (telegramId уникален).
+   */
+  async resolveAccountId(telegramUser: TelegramUserPayload): Promise<string> {
+    const account = await this.userModel
+      .findOneAndUpdate(
+        { telegramId: telegramUser.id },
+        {
+          $setOnInsert: {
+            telegramId: telegramUser.id,
+            firstName: telegramUser.first_name,
+            lastName: telegramUser.last_name,
+            username: telegramUser.username,
+            photoUrl: telegramUser.photo_url,
+          },
+        },
+        { upsert: true, new: true, projection: { _id: 1 } },
+      )
+      .lean()
+      .exec();
+    return account._id.toString();
   }
 
   async findById(id: string): Promise<UserDocument | null> {
@@ -187,12 +222,17 @@ export class UsersService {
       .exec();
   }
 
-  async findAll(): Promise<UserDocument[]> {
-    return this.userModel.find().exec();
-  }
-
-  async update(id: string, updateData: any): Promise<UserDocument | null> {
-    return this.userModel.findByIdAndUpdate(id, updateData, { new: true }).exec();
+  async updateProfile(
+    userId: string,
+    dto: UpdateProfileDto,
+  ): Promise<UserDocument | null> {
+    const update: UpdateProfileDto = {
+      ...(dto.currency ? { currency: dto.currency } : {}),
+      ...(dto.language ? { language: dto.language } : {}),
+    };
+    return this.userModel
+      .findByIdAndUpdate(userId, { $set: update }, { new: true })
+      .exec();
   }
 
   async checkAnalysisLimit(userId: string, type: 'transactions' | 'savings'): Promise<void> {

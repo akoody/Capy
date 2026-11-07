@@ -1,10 +1,11 @@
-import { IsNumber, IsString, IsEnum } from 'class-validator';
+import { IsNumber, IsString, IsEnum, IsPositive } from 'class-validator';
 
 export class CreateBudgetDto {
   @IsString()
   name: string;
 
   @IsNumber()
+  @IsPositive()
   amount: number;
 
   @IsString()
@@ -12,7 +13,4 @@ export class CreateBudgetDto {
 
   @IsEnum(['weekly', 'monthly'])
   period: 'weekly' | 'monthly';
-
-  @IsString()
-  userId: string;
 }

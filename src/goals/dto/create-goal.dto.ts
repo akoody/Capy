@@ -2,7 +2,7 @@ import {
   IsString,
   IsNumber,
   IsDate,
-  IsMongoId,
+  IsPositive,
   IsOptional,
 } from 'class-validator';
 
@@ -11,14 +11,12 @@ export class CreateGoalDto {
   readonly name: string;
 
   @IsNumber()
+  @IsPositive()
   readonly targetAmount: number;
 
   @IsDate()
   @IsOptional()
   readonly targetDate?: Date;
-
-  @IsMongoId()
-  readonly userId: string;
 
   @IsString()
   @IsOptional()

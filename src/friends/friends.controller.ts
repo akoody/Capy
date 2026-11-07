@@ -1,4 +1,6 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { CurrentUserId } from '../auth/current-account';
+import { CreateFriendRequestDto } from './dto/create-friend-request.dto';
 import { FriendsService } from './friends.service';
 
 @Controller('friends')
@@ -6,22 +8,22 @@ export class FriendsController {
   constructor(private readonly friendsService: FriendsService) {}
 
   @Post()
-  create(@Body() body: { requesterId: string, recipientId: string }) {
-    return this.friendsService.create(body.requesterId, body.recipientId);
+  create(@CurrentUserId() userId: string, @Body() dto: CreateFriendRequestDto) {
+    return this.friendsService.create(userId, dto.recipientId);
   }
 
   @Post(':id/accept')
-  accept(@Param('id') id: string) {
-    return this.friendsService.accept(id);
+  accept(@CurrentUserId() userId: string, @Param('id') id: string) {
+    return this.friendsService.accept(userId, id);
   }
 
   @Post(':id/reject')
-  reject(@Param('id') id: string) {
-    return this.friendsService.reject(id);
+  reject(@CurrentUserId() userId: string, @Param('id') id: string) {
+    return this.friendsService.reject(userId, id);
   }
 
   @Get()
-  findAll(@Query('userId') userId: string) {
+  findAll(@CurrentUserId() userId: string) {
     return this.friendsService.findAllForUser(userId);
   }
 }

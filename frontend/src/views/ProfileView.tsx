@@ -26,7 +26,7 @@ const ProfileView = ({ user, loading, onOpenAcademy }: ProfileViewProps) => {
           const achievementsRes = await api.get('/achievements');
           setAllAchievements(achievementsRes.data);
 
-          const streakRes = await api.get(`/users/${user._id}/streak`);
+          const streakRes = await api.get('/users/me/streak');
           setStreak(streakRes.data.streak);
 
           const leaderboardRes = await api.get('/gamification/leaderboard');

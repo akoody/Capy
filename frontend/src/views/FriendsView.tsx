@@ -11,10 +11,10 @@ const FriendsView = () => {
 
   const fetchFriendsData = async () => {
     try {
-      const friendsRes = await api.get('/users/12345/friends'); // TODO: replace with real user ID
+      const friendsRes = await api.get('/users/me/friends');
       setFriends(friendsRes.data);
 
-      const requestsRes = await api.get('/friends?userId=12345'); // TODO: replace with real user ID
+      const requestsRes = await api.get('/friends');
       setFriendRequests(requestsRes.data);
     } catch (error) {
       console.error('Failed to fetch friends data', error);
@@ -38,7 +38,7 @@ const FriendsView = () => {
 
   const handleAddFriend = async (recipientId: string) => {
     try {
-      await api.post('/friends', { requesterId: '12345', recipientId }); // TODO: replace with real user ID
+      await api.post('/friends', { recipientId });
       // TODO: refresh data
     } catch (error) {
       console.error('Failed to add friend', error);

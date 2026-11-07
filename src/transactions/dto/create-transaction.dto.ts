@@ -5,17 +5,16 @@ import {
   IsOptional,
   IsDateString,
   IsMongoId,
+  IsPositive,
 } from 'class-validator';
 
 export class CreateTransactionDto {
-  @IsString()
-  readonly user: string;
-
-  @IsString()
+  @IsMongoId()
   @IsOptional()
   readonly goal?: string;
 
   @IsNumber()
+  @IsPositive()
   readonly amount: number;
 
   @IsIn(['deposit', 'withdraw', 'income', 'expense'])

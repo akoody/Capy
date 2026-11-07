@@ -28,7 +28,7 @@ export const AcademyProvider = ({ children, userId }: { children: ReactNode, use
 
       if (userId) {
         try {
-          const userResponse = await api.get(`/users/id/${userId}`);
+          const userResponse = await api.get('/users/me');
           setUser(userResponse.data);
         } catch (error: any) {
           if (error.response && error.response.status === 404) {
@@ -49,7 +49,7 @@ export const AcademyProvider = ({ children, userId }: { children: ReactNode, use
   const completeLesson = async (lessonId: string) => {
     if (!user) return;
     try {
-      await api.post(`/academy/lessons/complete`, { userId: user._id, lessonId });
+      await api.post(`/academy/lessons/complete`, { lessonId });
       await fetchAcademyData(); // Refetch data after completing a lesson
     } catch (error) {
       console.error("Failed to complete lesson", error);

@@ -46,7 +46,6 @@ const AddGoalModal = ({ isOpen, onClose, onGoalAdded, userId, goalsCount }: AddG
       await api.post('/goals', {
         name,
         targetAmount: Number(amount),
-        userId,
         icon: selectedIcon,
       });
 

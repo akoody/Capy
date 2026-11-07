@@ -1,5 +1,5 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import type { AuthenticatedRequest } from './telegram-auth.guard';
+import type { AuthenticatedRequest } from './current-account';
 import type { TelegramUserPayload } from './telegram-init-data';
 
 /** Пользователь Telegram, проверенный TelegramAuthGuard. */

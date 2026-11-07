@@ -87,7 +87,7 @@ function App() {
   const fetchGoals = useCallback(async () => {
     if (!user?._id) return;
     try {
-      const goalsResponse = await api.get(`/goals?userId=${user._id}`);
+      const goalsResponse = await api.get('/goals');
       setGoals(goalsResponse.data);
     } catch (err) {
       console.error("Failed to fetch goals", err);

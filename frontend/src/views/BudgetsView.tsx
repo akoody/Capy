@@ -10,7 +10,7 @@ const BudgetsView = () => {
 
   const fetchBudgets = async () => {
     try {
-      const response = await api.get('/budgets?userId=12345'); // TODO: replace with real user ID
+      const response = await api.get('/budgets');
       setBudgets(response.data);
     } catch (error) {
       console.error('Failed to fetch budgets', error);

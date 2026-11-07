@@ -17,49 +17,31 @@ export class PiggyBankService {
     private readonly transactionsService: TransactionsService,
   ) {}
 
-  private async getUserObjectId(userId: string): Promise<string> {
-    // Check if userId is already an ObjectId or if it's a telegramId
-    if (userId.match(/^[0-9a-fA-F]{24}$/)) {
-      // It's an ObjectId
-      const user = await this.usersService.findById(userId);
-      if (!user) {
-        throw new Error('User not found');
-      }
-      return user._id.toString();
-    } else {
-      // It's a telegramId
-      const user = await this.usersService.findOneByTelegramId(parseInt(userId, 10));
-      if (!user) {
-        throw new Error('User not found');
-      }
-      return user._id.toString();
-    }
-  }
-
   async findOneByUser(userId: string): Promise<PiggyBankDocument | null> {
-    const userObjectId = await this.getUserObjectId(userId);
-    return this.piggyBankModel.findOne({ user: userObjectId }).exec();
+    return this.piggyBankModel.findOne({ user: userId }).exec();
   }
 
+  /** Атомарное пополнение: без read-modify-write, параллельные запросы не теряются. */
   async deposit(userId: string, amount: number): Promise<PiggyBank> {
-    const userObjectId = await this.getUserObjectId(userId);
-    const piggyBank = await this.piggyBankModel.findOne({ user: userObjectId }).exec();
-    if (piggyBank) {
-      piggyBank.amount += amount;
-      return piggyBank.save();
-    }
-    const newPiggyBank = new this.piggyBankModel({ user: userObjectId, amount });
-    return newPiggyBank.save();
+    return this.piggyBankModel
+      .findOneAndUpdate(
+        { user: userId },
+        { $inc: { amount } },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      )
+      .orFail()
+      .exec();
   }
 
+  /** Атомарное списание: баланс проверяется в том же запросе, в минус не уйти. */
   async withdraw(userId: string, amount: number): Promise<PiggyBank | null> {
-    const userObjectId = await this.getUserObjectId(userId);
-    const piggyBank = await this.piggyBankModel.findOne({ user: userObjectId }).exec();
-    if (piggyBank && piggyBank.amount >= amount) {
-      piggyBank.amount -= amount;
-      return piggyBank.save();
-    }
-    return null;
+    return this.piggyBankModel
+      .findOneAndUpdate(
+        { user: userId, amount: { $gte: amount } },
+        { $inc: { amount: -amount } },
+        { new: true },
+      )
+      .exec();
   }
 
   async analyzeSavings(userId: string): Promise<string> {

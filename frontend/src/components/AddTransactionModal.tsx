@@ -90,7 +90,6 @@ const AddTransactionModal = ({
       }
 
       const body: Record<string, unknown> = {
-        user: userId,
         type,
         amount: Number(amount),
         date,
@@ -107,7 +106,6 @@ const AddTransactionModal = ({
       if (deductFromWallet && type === 'expense') {
         try {
           await api.patch('/piggy-bank/withdraw', {
-            userId,
             amount: Number(amount),
           });
         } catch (walletErr) {
@@ -122,7 +120,6 @@ const AddTransactionModal = ({
       if (depositToWallet && type === 'income') {
         try {
           await api.patch('/piggy-bank/deposit', {
-            userId,
             amount: Number(amount),
           });
         } catch (walletErr) {

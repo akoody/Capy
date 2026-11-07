@@ -21,7 +21,7 @@ export const LanguageProvider = ({ children, userId }: { children: ReactNode; us
     if (userId) {
       const loadUserLanguage = async () => {
         try {
-          const response = await api.get(`/users/id/${userId}`);
+          const response = await api.get('/users/me');
           if (response.data.language) {
             setLanguage(response.data.language);
             i18n.changeLanguage(response.data.language);
@@ -39,7 +39,7 @@ export const LanguageProvider = ({ children, userId }: { children: ReactNode; us
     i18n.changeLanguage(newLanguage);
     if (userId) {
       try {
-        await api.patch(`/users/${userId}`, { language: newLanguage });
+        await api.patch('/users/me', { language: newLanguage });
       } catch (error) {
         console.error('Failed to save language', error);
       }

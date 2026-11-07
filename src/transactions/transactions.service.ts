@@ -2,6 +2,8 @@ import { Injectable, Inject, forwardRef, BadRequestException } from '@nestjs/com
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Transaction, TransactionDocument } from './schemas/transaction.schema';
+import { Goal, GoalDocument } from '../goals/schemas/goal.schema';
+import { orNotFound, ownedBy } from '../common/owned-by';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { UsersService } from '../users/users.service';
@@ -18,28 +20,18 @@ export class TransactionsService {
     @Inject(forwardRef(() => UsersService))
     private readonly usersService: UsersService,
     private readonly transactionCategoriesService: TransactionCategoriesService,
+    @InjectModel(Goal.name) private goalModel: Model<GoalDocument>,
   ) {}
 
-  async create(createTransactionDto: CreateTransactionDto): Promise<Transaction> {
-    // Check if user is already an ObjectId or if it's a telegramId
-    let user;
-    if (createTransactionDto.user.match(/^[0-9a-fA-F]{24}$/)) {
-      // It's an ObjectId
-      user = await this.usersService.findById(createTransactionDto.user);
-    } else {
-      // It's a telegramId
-      user = await this.usersService.findOneByTelegramId(parseInt(createTransactionDto.user, 10));
-    }
-    
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    const userMongoId = user._id.toString();
+  async create(
+    userId: string,
+    createTransactionDto: CreateTransactionDto,
+  ): Promise<Transaction> {
+    await this.assertGoalOwned(userId, createTransactionDto.goal);
     let category = createTransactionDto.category?.trim();
     if (createTransactionDto.categoryId) {
       const catDoc = await this.transactionCategoriesService.findOneForUser(
-        userMongoId,
+        userId,
         createTransactionDto.categoryId,
       );
       category = catDoc.name;
@@ -49,7 +41,7 @@ export class TransactionsService {
     }
 
     const transaction = new this.transactionModel({
-      user: user._id,
+      user: userId,
       amount: createTransactionDto.amount,
       type: createTransactionDto.type,
       category,
@@ -61,7 +53,7 @@ export class TransactionsService {
 
     if (saved.type === 'expense' || saved.type === 'income') {
       await this.transactionCategoriesService.ensureFromTransaction(
-        userMongoId,
+        userId,
         category,
         saved.type,
       );
@@ -70,32 +62,42 @@ export class TransactionsService {
     return saved;
   }
 
-  async findAllForUser(userId: string): Promise<Transaction[]> {
-    // Check if userId is already an ObjectId or if it's a telegramId
-    let user;
-    if (userId.match(/^[0-9a-fA-F]{24}$/)) {
-      // It's an ObjectId
-      user = await this.usersService.findById(userId);
-    } else {
-      // It's a telegramId
-      user = await this.usersService.findOneByTelegramId(parseInt(userId, 10));
-    }
-    
-    if (!user) {
-      return [];
-    }
-    return this.transactionModel
-      .find({ user: user._id })
-      .sort({ date: -1 })
-      .exec();
+  async findAllForUser(userId: string): Promise<TransactionDocument[]> {
+    return this.transactionModel.find({ user: userId }).sort({ date: -1 }).exec();
   }
 
-  async update(id: string, updateTransactionDto: UpdateTransactionDto): Promise<Transaction | null> {
-    return this.transactionModel.findByIdAndUpdate(id, updateTransactionDto, { new: true }).exec();
+  async update(
+    userId: string,
+    id: string,
+    updateTransactionDto: UpdateTransactionDto,
+  ): Promise<Transaction> {
+    await this.assertGoalOwned(userId, updateTransactionDto.goal);
+    return orNotFound(
+      await this.transactionModel
+        .findOneAndUpdate(
+          ownedBy(userId, id),
+          { $set: updateTransactionDto },
+          { new: true },
+        )
+        .exec(),
+      'Transaction',
+    );
   }
 
-  async remove(id: string): Promise<Transaction | null> {
-    return this.transactionModel.findByIdAndDelete(id).exec();
+  async remove(userId: string, id: string): Promise<Transaction> {
+    return orNotFound(
+      await this.transactionModel.findOneAndDelete(ownedBy(userId, id)).exec(),
+      'Transaction',
+    );
+  }
+
+  /** Транзакцию нельзя привязать к чужой цели. */
+  private async assertGoalOwned(userId: string, goalId?: string): Promise<void> {
+    if (!goalId) return;
+    const owned = await this.goalModel.exists(ownedBy(userId, goalId));
+    if (!owned) {
+      throw new BadRequestException('Goal not found');
+    }
   }
 
   async analyzeTransactions(userId: string): Promise<string> {

@@ -19,7 +19,7 @@ export const CurrencyProvider = ({ children, userId }: { children: ReactNode; us
     if (userId) {
       const loadUserCurrency = async () => {
         try {
-          const response = await api.get(`/users/id/${userId}`);
+          const response = await api.get('/users/me');
           if (response.data.currency) {
             setCurrency(response.data.currency);
           }
@@ -35,7 +35,7 @@ export const CurrencyProvider = ({ children, userId }: { children: ReactNode; us
     setCurrency(newCurrency);
     if (userId) {
       try {
-        await api.patch(`/users/${userId}`, { currency: newCurrency });
+        await api.patch('/users/me', { currency: newCurrency });
       } catch (error) {
         console.error('Failed to save currency', error);
       }
