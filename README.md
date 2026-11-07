@@ -12,22 +12,22 @@ Telegram Mini App для личных финансов: кошелёк и цел
 
 ```mermaid
 flowchart LR
-  TG[Telegram клиент] -->|initData| WEB[Mini App<br/>React + Vite]
-  WEB -->|/api, Authorization: tma …| NGINX[nginx]
+  TG["Telegram клиент"] -->|initData| WEB["Mini App<br/>React + Vite"]
+  WEB -->|/api, Authorization: tma …| NGINX["nginx"]
   NGINX --> API
 
-  subgraph API[NestJS API]
-    GUARD[TelegramAuthGuard<br/>подпись + срок + аккаунт] --> CTRL[Контроллеры<br/>@CurrentUserId]
-    CTRL --> LEDGER[Финансы<br/>transactions · goals · budgets · piggy-bank]
-    CTRL --> PLAN[Планирование<br/>tasks · journal]
-    CTRL --> ENG[Вовлечение<br/>academy · achievements · friends]
-    CTRL --> ASSIST[Голосовой ассистент]
-    LEDGER & PLAN & ASSIST --> LLM[LlmModule<br/>цепочки провайдеров]
-    CRON[Напоминания<br/>cron] --> NOTIFY[Telegram Bot API]
+  subgraph API["NestJS API"]
+    GUARD["TelegramAuthGuard<br/>подпись + срок + аккаунт"] --> CTRL["Контроллеры<br/>@CurrentUserId"]
+    CTRL --> LEDGER["Финансы<br/>transactions · goals · budgets · piggy-bank"]
+    CTRL --> PLAN["Планирование<br/>tasks · journal"]
+    CTRL --> ENG["Вовлечение<br/>academy · achievements · friends"]
+    CTRL --> ASSIST["Голосовой ассистент"]
+    LEDGER & PLAN & ASSIST --> LLM["LlmModule<br/>цепочки провайдеров"]
+    CRON["Напоминания<br/>cron"] --> NOTIFY["Telegram Bot API"]
   end
 
-  LEDGER & PLAN & ENG --> DB[(MongoDB)]
-  LLM --> PROVIDERS[GigaChat · Gemini · DeepSeek · Groq · OpenAI]
+  LEDGER & PLAN & ENG --> DB[("MongoDB")]
+  LLM --> PROVIDERS["GigaChat · Gemini · DeepSeek · Groq · OpenAI"]
 ```
 
 Бэкенд — модульный монолит на NestJS. Каждый запрос проходит один и тот же путь:

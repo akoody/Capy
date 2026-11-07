@@ -58,10 +58,10 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-  A[TransactionsService<br/>PiggyBankService<br/>JournalService] -->|analysis| L[LlmService]
-  V[AssistantService] -->|interpret, JSON| L
-  L --> C1[GigaChat] --> C2[Gemini] --> C3[DeepSeek] --> C4[Groq]
-  L -.->|только interpret, первым| O[OpenAI]
+  A["TransactionsService<br/>PiggyBankService<br/>JournalService"] -->|analysis| L["LlmService"]
+  V["AssistantService"] -->|interpret, JSON| L
+  L --> C1["GigaChat"] --> C2["Gemini"] --> C3["DeepSeek"] --> C4["Groq"]
+  L -.->|только interpret, первым| O["OpenAI"]
 ```
 
 - Каждый провайдер — адаптер `LlmProvider` с типизированным ответом. OpenAI, DeepSeek и Groq используют один `OpenAiCompatibleProvider`.
