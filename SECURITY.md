@@ -1,45 +1,46 @@
-# Security Policy
+# Безопасность
 
-## Supported Versions
+## Как сообщить об уязвимости
 
-We actively support the latest version of the application. Security updates are applied as needed.
+Не открывайте публичный issue. Напишите владельцу репозитория через [GitHub](https://github.com/akoody) или сайт [vladislavc.online](https://vladislavc.online). Постараемся ответить в течение нескольких дней.
 
-## Reporting a Vulnerability
+## Модель безопасности
 
-If you discover a security vulnerability, please **do not** open a public issue. Instead, please contact the repository owner directly.
+**Аутентификация** ([ADR-0002](docs/adr/0002-telegram-init-data-guard.md))
+- Каждый запрос несёт `Authorization: tma <initData>`, подписанный токеном бота.
+- Подпись проверяется HMAC-SHA256 со сравнением за постоянное время (`timingSafeEqual`).
+- initData действует `TELEGRAM_AUTH_MAX_AGE_SECONDS` (по умолчанию сутки), повторное использование старых данных отклоняется.
+- Данные пользователя из initData проверяются zod-схемой.
 
-## Security Best Practices
+**Авторизация** ([ADR-0003](docs/adr/0003-owner-scoped-data-access.md))
+- Владелец данных берётся только из проверенной подписи, никогда из query, body или params.
+- Все запросы по id ограничены владельцем; чужая и несуществующая запись дают одинаковый 404.
+- Профиль меняется только по белому списку полей; другим пользователям отдаются только публичные поля.
 
-### For Users
+**Ввод и деньги**
+- `ValidationPipe({ whitelist: true })` и class-validator на всех DTO; суммы только положительные.
+- Изменения баланса кошелька атомарны, списание не уводит баланс в минус.
 
-1. **Never commit `.env` files** - Always use `.env.example` as a template
-2. **Use strong API keys** - Generate secure, unique API keys for all services
-3. **Rotate credentials regularly** - Regularly update API keys and tokens
-4. **Keep dependencies updated** - Run `npm audit` regularly to check for vulnerabilities
+**Конфигурация и секреты** ([ADR-0001](docs/adr/0001-validate-config-at-startup.md))
+- Все секреты — только в переменных окружения, `.env` не коммитится (шаблон: `.env.example`).
+- Окружение проверяется при старте; значения секретов не попадают в сообщения об ошибках и логи.
+- Ключ Gemini передаётся в заголовке, а не в URL.
+- TLS к GigaChat проверяется при заданном `GIGACHAT_CA_CERT_PATH`; без него при старте пишется предупреждение.
 
-### For Developers
+**Сеть**
+- CORS выключен, пока не задан `CORS_ORIGINS`: фронт и API работают на одном домене.
 
-1. All sensitive data must be stored in environment variables
-2. Never log sensitive information (API keys, tokens, passwords)
-3. Use HTTPS in production
-4. Implement rate limiting on sensitive endpoints
-5. Validate and sanitize all user inputs
+**Лимиты**
+- AI-анализ: 3 запроса одного типа за 2 часа на пользователя.
+- Голосовой ассистент: 40 команд за скользящий час на пользователя.
 
-## Known Security Features
+## Известные ограничения
 
-- Environment variable-based configuration
-- Rate limiting on AI analysis endpoints (3 requests per 2 hours per user)
-- Rate limiting on voice assistant (40 requests per rolling hour per user; stored as `voice` type on analysis requests)
-- Input validation using class-validator
-- CORS protection
-- Telegram authentication middleware
+- Общего rate limit на API (например, `@nestjs/throttler`) пока нет, есть только лимиты AI-функций.
+- Напоминания выполняются cron внутри процесса API; при нескольких экземплярах они продублируются.
 
-## Dependencies
-
-We regularly update dependencies to patch security vulnerabilities. Run `npm audit` to check for known vulnerabilities:
+## Зависимости
 
 ```bash
 npm audit
-npm audit fix
 ```
-
