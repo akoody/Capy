@@ -11,7 +11,7 @@ Telegram Mini App для личных финансов: кошелёк и цел
 ## Архитектура
 
 ```mermaid
-flowchart LR
+flowchart TB
   TG["Telegram клиент"] -->|initData| WEB["Mini App<br/>React + Vite"]
   WEB -->|/api, Authorization: tma …| NGINX["nginx"]
   NGINX --> API
