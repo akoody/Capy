@@ -1486,12 +1486,7 @@ ${catLine}
     }
 
     if (p.intent === 'wallet_withdraw') {
-      const ok = await this.piggyBankService.withdraw(userMongoId, amount);
-      if (!ok) {
-        throw new BadRequestException(
-          'Недостаточно средств на кошельке или кошелёк не найден',
-        );
-      }
+      await this.piggyBankService.withdraw(userMongoId, amount);
       return {
         message: p.reply_hint || `Снял с кошелька ${amount}`,
       };
@@ -1503,25 +1498,15 @@ ${catLine}
         'expense',
         p.category,
       );
-      let desc = p.description || '';
-      if (p.affect_wallet) {
-        desc = `${desc ? desc + ' ' : ''}(списано с кошелька)`;
-      }
+      const desc = p.description || '';
       const tx = await this.transactionsService.create(userMongoId, {
         type: 'expense',
         amount,
         category,
         description: desc || undefined,
         date: `${date}T12:00:00.000Z`,
+        affectWallet: Boolean(p.affect_wallet),
       });
-      if (p.affect_wallet) {
-        const w = await this.piggyBankService.withdraw(userMongoId, amount);
-        if (!w) {
-          throw new BadRequestException(
-            'Транзакция создана, но не удалось списать с кошелька (недостаточно средств)',
-          );
-        }
-      }
       return {
         message:
           p.reply_hint ||
@@ -1536,20 +1521,15 @@ ${catLine}
         'income',
         p.category,
       );
-      let desc = p.description || '';
-      if (p.affect_wallet) {
-        desc = `${desc ? desc + ' ' : ''}(пополнено в кошелек)`;
-      }
+      const desc = p.description || '';
       const tx = await this.transactionsService.create(userMongoId, {
         type: 'income',
         amount,
         category,
         description: desc || undefined,
         date: `${date}T12:00:00.000Z`,
+        affectWallet: Boolean(p.affect_wallet),
       });
-      if (p.affect_wallet) {
-        await this.piggyBankService.deposit(userMongoId, amount);
-      }
       return {
         message:
           p.reply_hint ||

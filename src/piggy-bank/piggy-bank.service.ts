@@ -11,6 +11,13 @@ import { UsersService } from '../users/users.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { LlmService } from '../llm/llm.service';
 import { LlmUnavailableError } from '../llm/llm.types';
+import { toMinor } from '../common/money';
+import { WalletBalanceService } from '../transactions/wallet-balance.service';
+
+export interface WalletOperationNote {
+  category: string;
+  description?: string;
+}
 
 @Injectable()
 export class PiggyBankService {
@@ -21,33 +28,40 @@ export class PiggyBankService {
     @Inject(forwardRef(() => TransactionsService))
     private readonly transactionsService: TransactionsService,
     private readonly llm: LlmService,
+    private readonly wallet: WalletBalanceService,
   ) {}
 
   async findOneByUser(userId: string): Promise<PiggyBankDocument | null> {
     return this.piggyBankModel.findOne({ user: userId }).exec();
   }
 
-  /** Атомарное пополнение: без read-modify-write, параллельные запросы не теряются. */
-  async deposit(userId: string, amount: number): Promise<PiggyBank> {
-    return this.piggyBankModel
-      .findOneAndUpdate(
-        { user: userId },
-        { $inc: { amount } },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
-      )
-      .orFail()
-      .exec();
+  async deposit(
+    userId: string,
+    amount: number,
+    note?: WalletOperationNote,
+  ): Promise<PiggyBank> {
+    return note
+      ? this.transactionsService.recordWalletOperation(userId, {
+          type: 'deposit',
+          amount,
+          ...note,
+        })
+      : this.wallet.credit(userId, toMinor(amount));
   }
 
-  /** Атомарное списание: баланс проверяется в том же запросе, в минус не уйти. */
-  async withdraw(userId: string, amount: number): Promise<PiggyBank | null> {
-    return this.piggyBankModel
-      .findOneAndUpdate(
-        { user: userId, amount: { $gte: amount } },
-        { $inc: { amount: -amount } },
-        { new: true },
-      )
-      .exec();
+  /** Бросает 400, если на кошельке не хватает средств. */
+  async withdraw(
+    userId: string,
+    amount: number,
+    note?: WalletOperationNote,
+  ): Promise<PiggyBank> {
+    return note
+      ? this.transactionsService.recordWalletOperation(userId, {
+          type: 'withdraw',
+          amount,
+          ...note,
+        })
+      : this.wallet.debit(userId, toMinor(amount));
   }
 
   async analyzeSavings(userId: string): Promise<string> {
@@ -66,25 +80,7 @@ export class PiggyBankService {
       await this.transactionsService.findAllForUser(userId);
 
     const savingsTransactions = allTransactions.filter((tx) => {
-      if ((tx.type === 'deposit' || tx.type === 'withdraw') && !tx.goal) {
-        return true;
-      }
-      if (tx.type === 'expense' && !tx.goal) {
-        const desc = (tx.description || '').toLowerCase();
-        return (
-          desc.includes('кошел') ||
-          desc.includes('wallet') ||
-          desc.includes('списано с кошелька')
-        );
-      }
-      if (tx.type === 'income' && !tx.goal) {
-        const desc = (tx.description || '').toLowerCase();
-        return (
-          desc.includes('пополнено в кошелек') ||
-          desc.includes('deposited to wallet')
-        );
-      }
-      return false;
+      return Boolean(tx.walletEffect);
     });
 
     if (

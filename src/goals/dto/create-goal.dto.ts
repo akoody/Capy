@@ -10,7 +10,7 @@ export class CreateGoalDto {
   @IsString()
   readonly name!: string;
 
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive()
   readonly targetAmount!: number;
 

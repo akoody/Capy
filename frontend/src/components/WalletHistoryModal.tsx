@@ -43,24 +43,7 @@ const WalletHistoryModal = ({ isOpen, onClose, userId, transactions: preloadedTr
         const response = await api.get('/transactions');
         const allTx = response.data as Transaction[];
         
-        // Filter wallet-related transactions
-        const walletTx = allTx.filter((tx) => {
-          // Include direct wallet operations (deposit/withdraw without goal)
-          if ((tx.type === 'deposit' || tx.type === 'withdraw') && !tx.goal) {
-            return true;
-          }
-          // Include expense transactions that were deducted from wallet
-          if (tx.type === 'expense' && !tx.goal) {
-            const desc = (tx.description || '').toLowerCase();
-            return desc.includes('кошел') || desc.includes('wallet') || desc.includes('списано с кошелька');
-          }
-          // Include income transactions that were deposited to wallet
-          if (tx.type === 'income' && !tx.goal) {
-            const desc = (tx.description || '').toLowerCase();
-            return desc.includes('пополнено в кошелек') || desc.includes('deposited to wallet');
-          }
-          return false;
-        }).sort((a, b) => {
+        const walletTx = allTx.filter((tx) => Boolean(tx.walletEffect)).sort((a, b) => {
           const timeA = a.createdAt ? new Date(a.createdAt).getTime() : new Date(a.date).getTime();
           const timeB = b.createdAt ? new Date(b.createdAt).getTime() : new Date(b.date).getTime();
           return timeB - timeA; // newest first

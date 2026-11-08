@@ -47,7 +47,7 @@ flowchart TB
 | [0002](docs/adr/0002-telegram-init-data-guard.md) | Аутентификация — глобальный guard по initData с TTL вместо middleware |
 | [0003](docs/adr/0003-owner-scoped-data-access.md) | Владелец данных берётся только из подписи, доступ к записям — через `ownedBy` |
 | [0004](docs/adr/0004-llm-provider-chains.md) | Все AI-провайдеры за одним модулем с цепочками fallback |
-| [0005](docs/adr/0005-keep-mongodb.md) | Остаёмся на MongoDB, деньги переводим на минорные единицы |
+| [0005](docs/adr/0005-keep-mongodb.md) | Остаёмся на MongoDB, деньги хранятся целыми в копейках, операции атомарны |
 | [0006](docs/adr/0006-quality-gates.md) | Strict TypeScript, линтер без warning, e2e на реальной базе в CI |
 
 ## Качество
@@ -58,10 +58,10 @@ flowchart TB
 
 ## Запуск локально
 
-Нужны Node.js 22 и MongoDB.
+Нужны Node.js 22 и MongoDB в режиме replica set: операции с кошельком идут в транзакциях.
 
 ```bash
-cp .env.example .env              # минимум: MONGODB_URI и TELEGRAM_BOT_TOKEN
+cp .env.example .env              # минимум: MONGODB_URI (replica set) и TELEGRAM_BOT_TOKEN
 npm ci --legacy-peer-deps
 npm run seed                      # курсы академии
 npm run start:dev                 # API на :3001
@@ -113,7 +113,6 @@ docs/            архитектура и журнал решений
 
 ## Дальше
 
-- **Ledger:** суммы в минорных единицах с валютой, транзакции MongoDB для операций с несколькими документами, ошибка вместо пустого ответа при нехватке средств ([ADR-0005](docs/adr/0005-keep-mongodb.md)).
 - **Ассистент:** разбить `AssistantService` на пайплайн transcribe → interpret → validate → execute, вынести распознавание речи в порт `SpeechToText`.
 - **Worker:** напоминания и AI-задачи — в отдельный процесс с очередью (BullMQ), чтобы API масштабировался горизонтально без дублирования cron.
 - **Эксплуатация:** Docker и compose вместо pm2-скриптов, health-check, структурные логи, OpenAPI.

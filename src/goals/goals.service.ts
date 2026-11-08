@@ -5,6 +5,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { ownedBy, orNotFound } from '../common/owned-by';
+import { toMinor } from '../common/money';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Goal, GoalDocument } from './schemas/goal.schema';
@@ -13,6 +14,8 @@ import { UpdateGoalAmountDto } from './dto/update-goal-amount.dto';
 import { UsersService } from '../users/users.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { SetupRecurringTransactionDto } from './dto/setup-recurring-transaction.dto';
+
+const SAVER_10K_MINOR = toMinor(10_000);
 
 @Injectable()
 export class GoalsService {
@@ -52,13 +55,11 @@ export class GoalsService {
     id: string,
     updateGoalAmountDto: UpdateGoalAmountDto,
   ): Promise<Goal> {
-    const goal = await this.findOne(userId, id);
-
     const updatedGoal = orNotFound(
       await this.goalModel
         .findOneAndUpdate(
           ownedBy(userId, id),
-          { $inc: { currentAmount: updateGoalAmountDto.amount } },
+          { $inc: { currentAmountMinor: toMinor(updateGoalAmountDto.amount) } },
           { new: true },
         )
         .exec(),
@@ -70,19 +71,19 @@ export class GoalsService {
       total: number;
     }>([
       { $match: { user: updatedGoal.user } },
-      { $group: { _id: null, total: { $sum: '$currentAmount' } } },
+      { $group: { _id: null, total: { $sum: '$currentAmountMinor' } } },
     ]);
-    const totalSavings = totalSavingsAggregation[0]?.total || 0;
+    const totalSavingsMinor = totalSavingsAggregation[0]?.total || 0;
 
-    if (totalSavings >= 10000) {
+    if (totalSavingsMinor >= SAVER_10K_MINOR) {
       await this.usersService.grantAchievement(userId, 'SAVER_10K');
     }
 
-    if (updatedGoal.currentAmount >= updatedGoal.targetAmount) {
+    if (updatedGoal.currentAmountMinor >= updatedGoal.targetAmountMinor) {
       await this.usersService.grantAchievement(userId, 'TARGET_REACHED');
       const completedGoalsCount = await this.goalModel.countDocuments({
         user: updatedGoal.user,
-        currentAmount: { $gte: goal.targetAmount },
+        $expr: { $gte: ['$currentAmountMinor', '$targetAmountMinor'] },
       });
       if (completedGoalsCount >= 5) {
         await this.usersService.grantAchievement(userId, 'GOAL_MASTER_5');
@@ -97,24 +98,23 @@ export class GoalsService {
     id: string,
     updateGoalAmountDto: UpdateGoalAmountDto,
   ): Promise<Goal> {
-    const goal = await this.findOne(userId, id);
+    const amountMinor = toMinor(updateGoalAmountDto.amount);
+    // Проверка остатка и списание — один запрос, параллельно в минус не уйти.
+    const updated = await this.goalModel
+      .findOneAndUpdate(
+        { ...ownedBy(userId, id), currentAmountMinor: { $gte: amountMinor } },
+        { $inc: { currentAmountMinor: -amountMinor } },
+        { new: true },
+      )
+      .exec();
 
-    if (goal.currentAmount < updateGoalAmountDto.amount) {
-      throw new BadRequestException(
-        'Withdrawal amount cannot be greater than the current amount.',
-      );
+    if (updated) {
+      return updated;
     }
 
-    // No transaction logging for goal withdrawals
-    return orNotFound(
-      await this.goalModel
-        .findOneAndUpdate(
-          ownedBy(userId, id),
-          { $inc: { currentAmount: -updateGoalAmountDto.amount } },
-          { new: true },
-        )
-        .exec(),
-      'Goal',
+    await this.findOne(userId, id);
+    throw new BadRequestException(
+      'Withdrawal amount cannot be greater than the current amount.',
     );
   }
 
@@ -124,7 +124,13 @@ export class GoalsService {
     setupRecurringTransactionDto: SetupRecurringTransactionDto,
   ): Promise<Goal> {
     return this.updateOwned(userId, id, {
-      $set: { recurringTransaction: setupRecurringTransactionDto },
+      $set: {
+        recurringTransaction: {
+          amountMinor: toMinor(setupRecurringTransactionDto.amount),
+          frequency: setupRecurringTransactionDto.frequency,
+          startDate: setupRecurringTransactionDto.startDate,
+        },
+      },
     });
   }
 
@@ -132,7 +138,9 @@ export class GoalsService {
     const goal = await this.findOne(userId, id);
     // Reset the goal to make it active again by setting current amount to target - 1
     return this.updateOwned(userId, id, {
-      $set: { currentAmount: Math.max(0, goal.targetAmount - 1) },
+      $set: {
+        currentAmountMinor: Math.max(0, goal.targetAmountMinor - toMinor(1)),
+      },
     });
   }
 

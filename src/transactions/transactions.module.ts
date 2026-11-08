@@ -13,6 +13,11 @@ import { TransactionCategoriesController } from './transaction-categories.contro
 import { UsersModule } from '../users/users.module';
 import { Goal, GoalSchema } from '../goals/schemas/goal.schema';
 import { LlmModule } from '../llm/llm.module';
+import {
+  PiggyBank,
+  PiggyBankSchema,
+} from '../piggy-bank/schemas/piggy-bank.schema';
+import { WalletBalanceService } from './wallet-balance.service';
 
 @Module({
   imports: [
@@ -22,11 +27,20 @@ import { LlmModule } from '../llm/llm.module';
       { name: TransactionCategory.name, schema: TransactionCategorySchema },
       // Только для проверки, что цель транзакции принадлежит тому же пользователю.
       { name: Goal.name, schema: GoalSchema },
+      { name: PiggyBank.name, schema: PiggyBankSchema },
     ]),
     forwardRef(() => UsersModule),
   ],
   controllers: [TransactionsController, TransactionCategoriesController],
-  providers: [TransactionsService, TransactionCategoriesService],
-  exports: [TransactionsService, TransactionCategoriesService],
+  providers: [
+    TransactionsService,
+    TransactionCategoriesService,
+    WalletBalanceService,
+  ],
+  exports: [
+    TransactionsService,
+    TransactionCategoriesService,
+    WalletBalanceService,
+  ],
 })
 export class TransactionsModule {}

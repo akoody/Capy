@@ -87,6 +87,8 @@ export interface Transaction {
   description?: string;
   goal?: Goal;
   createdAt?: string;
+  /** Как операция изменила кошелёк. */
+  walletEffect?: 'debit' | 'credit';
 }
 
 export interface TransactionCategory {

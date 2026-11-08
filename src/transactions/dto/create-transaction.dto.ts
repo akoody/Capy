@@ -4,6 +4,7 @@ import {
   IsIn,
   IsOptional,
   IsDateString,
+  IsBoolean,
   IsMongoId,
   IsPositive,
 } from 'class-validator';
@@ -13,7 +14,7 @@ export class CreateTransactionDto {
   @IsOptional()
   readonly goal?: string;
 
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive()
   readonly amount!: number;
 
@@ -36,4 +37,9 @@ export class CreateTransactionDto {
 
   @IsDateString()
   readonly date!: string;
+
+  /** Списать расход с кошелька или зачислить доход на него. */
+  @IsBoolean()
+  @IsOptional()
+  readonly affectWallet?: boolean;
 }

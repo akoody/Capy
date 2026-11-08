@@ -3,6 +3,9 @@ import { CurrentUserId } from '../auth/current-account';
 import { PiggyBankAmountDto } from './dto/piggy-bank-amount.dto';
 import { PiggyBankService } from './piggy-bank.service';
 
+const noteFrom = ({ category, description }: PiggyBankAmountDto) =>
+  category ? { category, description } : undefined;
+
 @Controller('piggy-bank')
 export class PiggyBankController {
   constructor(private readonly piggyBankService: PiggyBankService) {}
@@ -14,12 +17,12 @@ export class PiggyBankController {
 
   @Patch('deposit')
   deposit(@CurrentUserId() userId: string, @Body() dto: PiggyBankAmountDto) {
-    return this.piggyBankService.deposit(userId, dto.amount);
+    return this.piggyBankService.deposit(userId, dto.amount, noteFrom(dto));
   }
 
   @Patch('withdraw')
   withdraw(@CurrentUserId() userId: string, @Body() dto: PiggyBankAmountDto) {
-    return this.piggyBankService.withdraw(userId, dto.amount);
+    return this.piggyBankService.withdraw(userId, dto.amount, noteFrom(dto));
   }
 
   @Post('analyze')

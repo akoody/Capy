@@ -29,13 +29,6 @@ jobs:
   api-e2e:
     name: API e2e (MongoDB)
     runs-on: ubuntu-latest
-    services:
-      mongo:
-        image: mongo:7
-        ports: ['27017:27017']
-        options: >-
-          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 })'"
-          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       MONGODB_TEST_URI: mongodb://127.0.0.1:27017
     steps:
@@ -44,6 +37,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # Транзакциям MongoDB нужен replica set, поэтому контейнер запускается вручную.
+      - name: Start MongoDB replica set
+        run: |
+          docker run -d --name mongo -p 27017:27017 mongo:7 --replSet rs0 --bind_ip_all
+          until docker exec mongo mongosh --quiet --eval 'db.runCommand({ ping: 1 })'; do sleep 2; done
+          docker exec mongo mongosh --quiet --eval 'rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "127.0.0.1:27017" }] })'
+          until docker exec mongo mongosh --quiet --eval 'quit(db.hello().isWritablePrimary ? 0 : 1)'; do sleep 2; done
       - run: npm ci --legacy-peer-deps
       - run: npm run test:e2e -- --ci
 

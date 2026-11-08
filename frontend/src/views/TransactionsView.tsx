@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import api from '../services/api';
+import api, { apiErrorMessage } from '../services/api';
 import { Transaction } from '../types';
 import { useCurrency } from '../context/CurrencyContext';
 import { useTranslation } from 'react-i18next';
@@ -93,57 +93,18 @@ const TransactionsView = () => {
   const confirmDelete = async () => {
     if (transactionToDelete) {
       try {
-        // Check if transaction was deducted from wallet
-        const wasDeductedFromWallet = 
-          transactionToDelete.type === 'expense' && 
-          transactionToDelete.description && 
-          (transactionToDelete.description.includes('(списано с кошелька)') || 
-           transactionToDelete.description.includes('списано с кошелька'));
-
-        // Check if transaction was deposited to wallet
-        const wasDepositedToWallet = 
-          transactionToDelete.type === 'income' && 
-          transactionToDelete.description && 
-          (transactionToDelete.description.includes('(пополнено в кошелек)') || 
-           transactionToDelete.description.includes('пополнено в кошелек'));
-
-        // Delete the transaction
+        // Кошелёк сервер корректирует вместе с удалением.
         await api.delete(`/transactions/${transactionToDelete._id}`);
         setTransactions(transactions.filter(t => t._id !== transactionToDelete._id));
 
-        // If it was deducted from wallet, return the funds
-        if (wasDeductedFromWallet && userId) {
-          try {
-            await api.patch('/piggy-bank/deposit', {
-              amount: transactionToDelete.amount,
-            });
-            // Dispatch event to update wallet balance in other views
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('walletUpdated'));
-            }, 100);
-          } catch (walletErr) {
-            console.error('Failed to return funds to wallet', walletErr);
-          }
-        }
-
-        // If it was deposited to wallet, withdraw the funds
-        if (wasDepositedToWallet && userId) {
-          try {
-            await api.patch('/piggy-bank/withdraw', {
-              amount: transactionToDelete.amount,
-            });
-            // Dispatch event to update wallet balance in other views
-            setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('walletUpdated'));
-            }, 100);
-          } catch (walletErr) {
-            console.error('Failed to withdraw funds from wallet', walletErr);
-          }
+        if (transactionToDelete.walletEffect) {
+          window.dispatchEvent(new CustomEvent('walletUpdated'));
         }
 
         closeDeleteModal();
       } catch (error) {
         console.error('Failed to delete transaction', error);
+        window.alert(apiErrorMessage(error, 'Failed to delete transaction'));
       }
     }
   };

@@ -1,9 +1,11 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
+import { moneyVirtual, SERIALIZE_MONEY } from '../../common/money.virtual';
+import { WALLET_EFFECTS, type WalletEffect } from '../../common/money';
 
 export type TransactionDocument = HydratedDocument<Transaction>;
 
-@Schema({ timestamps: true })
+@Schema({ timestamps: true, ...SERIALIZE_MONEY })
 export class Transaction {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   user!: Types.ObjectId;
@@ -11,8 +13,20 @@ export class Transaction {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Goal' })
   goal?: Types.ObjectId;
 
-  @Prop({ required: true })
+  /** Сумма в копейках, целое число. */
+  @Prop({ required: true, validate: Number.isInteger })
+  amountMinor!: number;
+
+  /** Основные единицы, виртуальное поле поверх amountMinor. */
   amount!: number;
+
+  /** Валюта пользователя в момент операции. */
+  @Prop({ required: true })
+  currency!: string;
+
+  /** Как операция изменила кошелёк; нет поля — кошелёк не затронут. */
+  @Prop({ type: String, enum: [...WALLET_EFFECTS] })
+  walletEffect?: WalletEffect;
 
   @Prop({ required: true, enum: ['deposit', 'withdraw', 'income', 'expense'] })
   type!: string;
@@ -30,3 +44,6 @@ export class Transaction {
 }
 
 export const TransactionSchema = SchemaFactory.createForClass(Transaction);
+
+TransactionSchema.index({ user: 1, date: -1 });
+moneyVirtual(TransactionSchema, 'amount', 'amountMinor');
