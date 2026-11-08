@@ -171,6 +171,15 @@ export class UsersService implements AccountResolver {
       .exec();
   }
 
+  async getCurrency(userId: string): Promise<string> {
+    const user = await this.userModel
+      .findById(userId)
+      .select({ currency: 1 })
+      .lean()
+      .exec();
+    return user?.currency ?? 'USD';
+  }
+
   async existsById(userId: string): Promise<boolean> {
     if (!isValidObjectId(userId)) return false;
     return (await this.userModel.exists({ _id: userId })) !== null;

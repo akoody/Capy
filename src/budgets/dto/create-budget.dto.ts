@@ -4,7 +4,7 @@ export class CreateBudgetDto {
   @IsString()
   name!: string;
 
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
   @IsPositive()
   amount!: number;
 

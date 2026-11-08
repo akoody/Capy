@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import api from '../services/api';
+import api, { apiErrorMessage } from '../services/api';
 import { useCurrency } from '../context/CurrencyContext';
 import { useTranslation } from 'react-i18next';
 
@@ -37,26 +37,12 @@ const PiggyBankModal = ({ isOpen, onClose, onSuccess, userId }: PiggyBankModalPr
     }
 
     try {
-      // Update piggy bank balance
-      await api.patch(`/piggy-bank/${mode}`,
-        {
-          amount: Number(amount),
-        },
-      );
-
-      // Create a transaction for wallet history
-      try {
-        await api.post('/transactions', {
-          type: mode, // 'deposit' or 'withdraw'
-          amount: Number(amount),
-          category: t('piggy_bank'),
-          description: mode === 'deposit' ? t('deposit') : t('withdraw'),
-          date: new Date().toISOString().split('T')[0],
-        });
-      } catch (txErr) {
-        console.error('Failed to create transaction for wallet history', txErr);
-        // Don't fail the whole operation if transaction creation fails
-      }
+      // Баланс и запись в истории сервер меняет одной транзакцией.
+      await api.patch(`/piggy-bank/${mode}`, {
+        amount: Number(amount),
+        category: t('piggy_bank'),
+        description: mode === 'deposit' ? t('deposit') : t('withdraw'),
+      });
 
       // Dispatch event to update wallet balance in other views
       window.dispatchEvent(new CustomEvent('walletUpdated'));
@@ -65,7 +51,7 @@ const PiggyBankModal = ({ isOpen, onClose, onSuccess, userId }: PiggyBankModalPr
       onClose();
     } catch (err) {
       console.error(`Failed to make a piggy bank ${mode}`, err);
-      setError(`Failed to make a ${mode}.`);
+      setError(apiErrorMessage(err, `Failed to make a ${mode}.`));
     }
   };
 

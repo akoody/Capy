@@ -12,4 +12,14 @@ api.interceptors.request.use(config => {
   return config;
 });
 
+/** Текст ошибки с сервера или запасной вариант. */
+export function apiErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError<{ message?: string | string[] }>(error)) {
+    const message = error.response?.data?.message;
+    if (Array.isArray(message)) return message.join(', ');
+    if (message) return message;
+  }
+  return fallback;
+}
+
 export default api;

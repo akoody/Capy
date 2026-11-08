@@ -1,7 +1,7 @@
 import { IsNumber, IsString, IsDateString } from 'class-validator';
 
 export class SetupRecurringTransactionDto {
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
   amount!: number;
 
   @IsString()

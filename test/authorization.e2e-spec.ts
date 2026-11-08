@@ -158,12 +158,11 @@ describe('Authorization (e2e)', () => {
     const bobBank = await http().get('/piggy-bank').set(as(bob)).expect(200);
     expect(bobBank.body).toEqual({});
 
-    const overdraw = await http()
+    await http()
       .patch('/piggy-bank/withdraw')
       .set(as(alice))
       .send({ amount: 150 })
-      .expect(200);
-    expect(overdraw.body).toEqual({});
+      .expect(400);
 
     await Promise.all(
       Array.from({ length: 5 }, () =>

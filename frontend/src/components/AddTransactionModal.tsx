@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import api from '../services/api';
+import api, { apiErrorMessage } from '../services/api';
 import { useTranslation } from 'react-i18next';
 import type { TransactionCategory } from '../types';
 
@@ -82,18 +82,16 @@ const AddTransactionModal = ({
     }
 
     try {
-      let finalDescription = description;
-      if (deductFromWallet && type === 'expense') {
-        finalDescription = `${description ? description + ' ' : ''}(списано с кошелька)`;
-      } else if (depositToWallet && type === 'income') {
-        finalDescription = `${description ? description + ' ' : ''}(пополнено в кошелек)`;
-      }
+      const affectWallet =
+        (deductFromWallet && type === 'expense') ||
+        (depositToWallet && type === 'income');
 
       const body: Record<string, unknown> = {
         type,
         amount: Number(amount),
         date,
-        ...(finalDescription.trim() ? { description: finalDescription.trim() } : {}),
+        ...(description.trim() ? { description: description.trim() } : {}),
+        ...(affectWallet ? { affectWallet: true } : {}),
       };
       if (useId) {
         body.categoryId = selectedCategoryId;
@@ -103,37 +101,9 @@ const AddTransactionModal = ({
 
       await api.post('/transactions', body);
 
-      if (deductFromWallet && type === 'expense') {
-        try {
-          await api.patch('/piggy-bank/withdraw', {
-            amount: Number(amount),
-          });
-        } catch (walletErr) {
-          console.error('Failed to deduct from wallet', walletErr);
-          setError(
-            'Транзакция создана, но не удалось списать с кошелька. Проверьте баланс кошелька.',
-          );
-          return;
-        }
-      }
-
-      if (depositToWallet && type === 'income') {
-        try {
-          await api.patch('/piggy-bank/deposit', {
-            amount: Number(amount),
-          });
-        } catch (walletErr) {
-          console.error('Failed to deposit to wallet', walletErr);
-          setError(
-            'Транзакция создана, но не удалось пополнить кошелек.',
-          );
-          return;
-        }
-      }
-
       onSuccess();
 
-      if ((deductFromWallet && type === 'expense') || (depositToWallet && type === 'income')) {
+      if (affectWallet) {
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('walletUpdated'));
         }, 200);
@@ -142,7 +112,7 @@ const AddTransactionModal = ({
       onClose();
     } catch (err) {
       console.error('Failed to create transaction', err);
-      setError('Failed to create transaction. Please try again.');
+      setError(apiErrorMessage(err, 'Failed to create transaction. Please try again.'));
     }
   };
 

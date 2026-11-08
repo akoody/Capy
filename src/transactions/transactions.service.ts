@@ -4,17 +4,27 @@ import {
   forwardRef,
   BadRequestException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Connection, Model } from 'mongoose';
 import { Transaction, TransactionDocument } from './schemas/transaction.schema';
 import { Goal, GoalDocument } from '../goals/schemas/goal.schema';
 import { orNotFound, ownedBy } from '../common/owned-by';
+import { signedWalletDelta, toMinor, type WalletEffect } from '../common/money';
+import { WalletBalanceService } from './wallet-balance.service';
+import type { PiggyBankDocument } from '../piggy-bank/schemas/piggy-bank.schema';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { UsersService } from '../users/users.service';
 import { TransactionCategoriesService } from './transaction-categories.service';
 import { LlmService } from '../llm/llm.service';
 import { LlmUnavailableError } from '../llm/llm.types';
+
+const WALLET_EFFECT_BY_TYPE: Record<string, WalletEffect> = {
+  expense: 'debit',
+  withdraw: 'debit',
+  income: 'credit',
+  deposit: 'credit',
+};
 
 @Injectable()
 export class TransactionsService {
@@ -26,6 +36,8 @@ export class TransactionsService {
     private readonly transactionCategoriesService: TransactionCategoriesService,
     @InjectModel(Goal.name) private goalModel: Model<GoalDocument>,
     private readonly llm: LlmService,
+    private readonly wallet: WalletBalanceService,
+    @InjectConnection() private readonly connection: Connection,
   ) {}
 
   async create(
@@ -47,16 +59,35 @@ export class TransactionsService {
       );
     }
 
-    const transaction = new this.transactionModel({
-      user: userId,
-      amount: createTransactionDto.amount,
-      type: createTransactionDto.type,
-      category,
-      description: createTransactionDto.description,
-      date: createTransactionDto.date,
-      ...(createTransactionDto.goal ? { goal: createTransactionDto.goal } : {}),
+    const walletEffect = createTransactionDto.affectWallet
+      ? WALLET_EFFECT_BY_TYPE[createTransactionDto.type]
+      : undefined;
+    const currency = await this.usersService.getCurrency(userId);
+
+    // Запись и движение денег в кошельке применяются вместе или не применяются.
+    const saved = await this.connection.transaction(async (session) => {
+      const transaction = new this.transactionModel({
+        user: userId,
+        amountMinor: toMinor(createTransactionDto.amount),
+        currency,
+        type: createTransactionDto.type,
+        category,
+        description: createTransactionDto.description,
+        date: createTransactionDto.date,
+        ...(walletEffect ? { walletEffect } : {}),
+        ...(createTransactionDto.goal
+          ? { goal: createTransactionDto.goal }
+          : {}),
+      });
+      if (walletEffect) {
+        await this.wallet.apply(
+          userId,
+          signedWalletDelta(walletEffect, transaction.amountMinor),
+          session,
+        );
+      }
+      return transaction.save({ session });
     });
-    const saved = await transaction.save();
 
     if (saved.type === 'expense' || saved.type === 'income') {
       await this.transactionCategoriesService.ensureFromTransaction(
@@ -82,23 +113,102 @@ export class TransactionsService {
     updateTransactionDto: UpdateTransactionDto,
   ): Promise<Transaction> {
     await this.assertGoalOwned(userId, updateTransactionDto.goal);
-    return orNotFound(
-      await this.transactionModel
-        .findOneAndUpdate(
-          ownedBy(userId, id),
-          { $set: updateTransactionDto },
-          { new: true },
-        )
-        .exec(),
-      'Transaction',
-    );
+    const { amount, ...fields } = updateTransactionDto;
+
+    return this.connection.transaction(async (session) => {
+      const transaction = orNotFound(
+        await this.transactionModel
+          .findOne(ownedBy(userId, id))
+          .session(session)
+          .exec(),
+        'Transaction',
+      );
+
+      if (
+        transaction.walletEffect &&
+        fields.type &&
+        fields.type !== transaction.type
+      ) {
+        throw new BadRequestException(
+          'Нельзя менять тип операции, связанной с кошельком',
+        );
+      }
+
+      if (amount !== undefined) {
+        const amountMinor = toMinor(amount);
+        if (
+          transaction.walletEffect &&
+          amountMinor !== transaction.amountMinor
+        ) {
+          await this.wallet.apply(
+            userId,
+            signedWalletDelta(
+              transaction.walletEffect,
+              amountMinor - transaction.amountMinor,
+            ),
+            session,
+          );
+        }
+        transaction.amountMinor = amountMinor;
+      }
+
+      transaction.set(fields);
+      return transaction.save({ session });
+    });
   }
 
+  /** Удаление откатывает влияние операции на кошелёк. */
   async remove(userId: string, id: string): Promise<Transaction> {
-    return orNotFound(
-      await this.transactionModel.findOneAndDelete(ownedBy(userId, id)).exec(),
-      'Transaction',
-    );
+    return this.connection.transaction(async (session) => {
+      const transaction = orNotFound(
+        await this.transactionModel
+          .findOneAndDelete(ownedBy(userId, id), { session })
+          .exec(),
+        'Transaction',
+      );
+      if (transaction.walletEffect) {
+        await this.wallet.apply(
+          userId,
+          -signedWalletDelta(transaction.walletEffect, transaction.amountMinor),
+          session,
+        );
+      }
+      return transaction;
+    });
+  }
+
+  /** Пополнение или снятие кошелька вместе с записью в истории. */
+  async recordWalletOperation(
+    userId: string,
+    input: {
+      type: 'deposit' | 'withdraw';
+      amount: number;
+      category: string;
+      description?: string;
+    },
+  ): Promise<PiggyBankDocument> {
+    const currency = await this.usersService.getCurrency(userId);
+    const walletEffect = WALLET_EFFECT_BY_TYPE[input.type];
+
+    return this.connection.transaction(async (session) => {
+      const amountMinor = toMinor(input.amount);
+      const wallet = await this.wallet.apply(
+        userId,
+        signedWalletDelta(walletEffect, amountMinor),
+        session,
+      );
+      await new this.transactionModel({
+        user: userId,
+        amountMinor,
+        currency,
+        type: input.type,
+        category: input.category,
+        description: input.description,
+        date: new Date(),
+        walletEffect,
+      }).save({ session });
+      return wallet;
+    });
   }
 
   /** Транзакцию нельзя привязать к чужой цели. */
