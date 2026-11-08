@@ -114,9 +114,9 @@ async function deriveWalletEffect(db: Db) {
 
 async function fillCurrency(db: Db) {
   let updated = 0;
-  const users = await db.collection('transactions').distinct<ObjectId>('user', {
+  const users = (await db.collection('transactions').distinct('user', {
     currency: { $exists: false },
-  });
+  })) as ObjectId[];
   for (const user of users) {
     const owner = await db
       .collection<{ _id: ObjectId; currency?: string }>('users')
