@@ -3,13 +3,14 @@
  * Поднимает весь AppModule на настоящей MongoDB (MONGODB_TEST_URI),
  * каждый запуск в отдельной базе, которая удаляется после тестов.
  */
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import type { INestApplication } from '@nestjs/common';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import type { Connection } from 'mongoose';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/app.setup';
 import { buildInitData } from '../src/auth/testing/sign-init-data';
 
 // Выставлен в test/e2e-env.ts вместе с MONGODB_URI отдельной базы.
@@ -31,9 +32,7 @@ describe('Authorization (e2e)', () => {
       imports: [AppModule],
     }).compile();
     app = moduleRef.createNestApplication({ logger: ['error'] });
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, transform: true }),
-    );
+    configureApp(app);
     await app.init();
     connection = app.get<Connection>(getConnectionToken());
   });

@@ -1,0 +1,64 @@
+# Полный стек на одной машине: docker compose up --build
+# Нужна переменная TELEGRAM_BOT_TOKEN; AI-ключи необязательны, см. .env.example.
+x-backend: &backend
+  build: .
+  restart: unless-stopped
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    MONGODB_URI: mongodb://mongo:27017/capy?replicaSet=rs0
+    TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN}
+  depends_on:
+    mongo:
+      condition: service_healthy
+
+services:
+  mongo:
+    image: mongo:7
+    # Транзакции MongoDB работают только на replica set, даже из одного узла.
+    command: ['--replSet', 'rs0', '--bind_ip_all']
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - |
+          try { rs.status() } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] }) }
+          quit(db.hello().isWritablePrimary ? 0 : 1)
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+  api:
+    <<: *backend
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - |-
+          fetch('http://127.0.0.1:3001/ready').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  worker:
+    <<: *backend
+    command: ['node', 'dist/worker.js']
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - '${WEB_PORT:-8080}:80'
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  mongo-data:

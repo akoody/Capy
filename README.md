@@ -51,10 +51,12 @@ flowchart TB
 | [0005](docs/adr/0005-keep-mongodb.md) | Остаёмся на MongoDB, деньги хранятся целыми в копейках, операции атомарны |
 | [0006](docs/adr/0006-quality-gates.md) | Strict TypeScript, линтер без warning, e2e на реальной базе в CI |
 | [0007](docs/adr/0007-worker-without-queue.md) | Фоновые задачи в отдельном процессе с атомарным захватом в MongoDB, без Redis |
+| [0008](docs/adr/0008-operations-baseline.md) | Пробы, структурные логи, лимит на аккаунт, контейнеры |
+| [0009](docs/adr/0009-frontend-feature-folders.md) | Фронтенд по фичам, без монорепозитория |
 
 ## Качество
 
-- **Тесты:** 85 unit-тестов (проверка initData, guard, конфиг, LLM-цепочки и адаптеры с подменой HTTP) и 30 e2e-сценариев на настоящей MongoDB, где второй пользователь пытается прочитать, изменить и удалить данные первого.
+- **Тесты:** 87 unit-тестов (проверка initData, guard, конфиг, LLM-цепочки и адаптеры с подменой HTTP) и 36 e2e-сценариев на настоящей MongoDB, где второй пользователь пытается прочитать, изменить и удалить данные первого.
 - **CI** ([ci.yml](.github/workflows/ci.yml)): Prettier, ESLint (`recommendedTypeChecked`, `--max-warnings=0`), typecheck, unit-тесты и сборка API; e2e с сервисом `mongo:7`; сборка фронта.
 - **Ревью через PR:** каждое изменение — отдельный PR с описанием проблемы, решения и того, что сознательно отложено ([история](https://github.com/akoody/Capy/pulls?q=is%3Apr+is%3Amerged)).
 
@@ -110,13 +112,17 @@ src/
   assistant/     голосовой ассистент: распознавание, разбор, выполнение
   users/ telegram/
 test/            e2e на MongoDB
-frontend/        Mini App
+frontend/        Mini App, крупные экраны в src/features, 27 тестов на vitest
 docs/            архитектура и журнал решений
 ```
 
-## Дальше
+## Эксплуатация
 
-- **Эксплуатация:** Docker и compose вместо pm2-скриптов, health-check, структурные логи, OpenAPI.
+```bash
+TELEGRAM_BOT_TOKEN=... docker compose up --build
+```
+
+Приложение откроется на `http://localhost:8080`, API доступен по `/api`. `GET /health` и `GET /ready` — пробы процесса и базы. Логи идут в stdout в JSON с `x-request-id`. Документация API включается через `DOCS_ENABLED=true` и лежит на `/docs`. Решения описаны в [ADR-0008](docs/adr/0008-operations-baseline.md).
 
 ## Лицензия
 
