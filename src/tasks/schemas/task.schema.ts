@@ -3,6 +3,17 @@ import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 export type TaskDocument = HydratedDocument<Task>;
 
+export interface TaskReminder {
+  _id?: Types.ObjectId;
+  fireAt: Date;
+  /** Отправлено (или прекращены попытки, см. failedAt). */
+  sentAt?: Date;
+  /** Занято экземпляром воркера на время отправки. */
+  claimedAt?: Date;
+  attempts?: number;
+  failedAt?: Date;
+}
+
 @Schema({ timestamps: true })
 export class Task {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
@@ -28,14 +39,20 @@ export class Task {
       {
         fireAt: { type: Date, required: true },
         sentAt: { type: Date, required: false },
+        claimedAt: { type: Date, required: false },
+        attempts: { type: Number, default: 0 },
+        failedAt: { type: Date, required: false },
       },
     ],
     default: [],
   })
-  reminders!: { fireAt: Date; sentAt?: Date }[];
+  reminders!: TaskReminder[];
 
   @Prop()
   completedAt?: Date;
 }
 
 export const TaskSchema = SchemaFactory.createForClass(Task);
+
+TaskSchema.index({ status: 1, 'reminders.fireAt': 1 });
+TaskSchema.index({ user: 1, status: 1 });

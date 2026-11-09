@@ -6,6 +6,7 @@ import { TelegramNotifyService } from '../telegram/telegram-notify.service';
 @Injectable()
 export class TasksReminderScheduler {
   private readonly logger = new Logger(TasksReminderScheduler.name);
+  private running = false;
 
   constructor(
     private readonly tasksService: TasksService,
@@ -14,6 +15,8 @@ export class TasksReminderScheduler {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async dispatchReminders(): Promise<void> {
+    if (this.running) return;
+    this.running = true;
     try {
       await this.tasksService.processDueReminders((telegramId, text) =>
         this.telegramNotify.sendMessage(telegramId, text),
@@ -22,6 +25,8 @@ export class TasksReminderScheduler {
       this.logger.warn(
         `processDueReminders: ${e instanceof Error ? e.message : String(e)}`,
       );
+    } finally {
+      this.running = false;
     }
   }
 }
