@@ -12,14 +12,14 @@ import { LanguageProvider } from './context/LanguageContext';
 import { CurrencyProvider } from './context/CurrencyContext';
 
 import GoalsView from './views/GoalsView';
-import TasksView from './views/TasksView';
+import TasksView from './features/tasks/TasksView';
 import ProfileView from './views/ProfileView';
 import AcademyView from './views/AcademyView';
-import TransactionsView from './views/TransactionsView';
+import TransactionsView from './features/transactions/TransactionsView';
 import SettingsView from './views/SettingsView';
-import JournalView from './views/JournalView';
+import JournalView from './features/journal/JournalView';
 import JournalFAB from './components/JournalFAB';
-import VoiceAssistantFAB from './components/VoiceAssistantFAB';
+import VoiceAssistantFAB from './features/voice/VoiceAssistantFAB';
 
 const CourseView = lazy(() => import('./views/CourseView'));
 const LessonView = lazy(() => import('./views/LessonView'));
