@@ -12,7 +12,7 @@ import { LanguageProvider } from './context/LanguageContext';
 import { CurrencyProvider } from './context/CurrencyContext';
 
 import GoalsView from './views/GoalsView';
-import TasksView from './views/TasksView';
+import TasksView from './features/tasks/TasksView';
 import ProfileView from './views/ProfileView';
 import AcademyView from './views/AcademyView';
 import TransactionsView from './views/TransactionsView';
