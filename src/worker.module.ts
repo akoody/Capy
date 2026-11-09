@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
 import { appEnvSchema, createEnvValidator } from './config/env.schema';
+import { LoggingModule } from './observability/logging.module';
 import { TasksReminderScheduler } from './tasks/tasks-reminder.scheduler';
 import { TasksModule } from './tasks/tasks.module';
 import { TelegramModule } from './telegram/telegram.module';
@@ -21,6 +22,7 @@ import { TelegramModule } from './telegram/telegram.module';
       }),
       inject: [ConfigService],
     }),
+    LoggingModule,
     TasksModule,
     TelegramModule,
   ],

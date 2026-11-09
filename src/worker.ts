@@ -1,12 +1,16 @@
 import './load-env';
-import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { Logger } from 'nestjs-pino';
 import { WorkerModule } from './worker.module';
 
 async function bootstrap() {
-  const worker = await NestFactory.createApplicationContext(WorkerModule);
+  const worker = await NestFactory.createApplicationContext(WorkerModule, {
+    bufferLogs: true,
+  });
+  const logger = worker.get(Logger);
+  worker.useLogger(logger);
   worker.enableShutdownHooks();
-  new Logger('Worker').log('Background worker started');
+  logger.log('Background worker started', 'Worker');
 }
 
 void bootstrap();
