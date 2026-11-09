@@ -60,14 +60,18 @@ export class AchievementsService implements OnModuleInit {
       },
     ];
 
-    for (const ach of achievementsToSeed) {
-      const existing = await this.achievementModel
-        .findOne({ key: ach.key })
-        .exec();
-      if (!existing) {
-        await this.achievementModel.create(ach);
-      }
-    }
+    // API и воркер стартуют одновременно: проверка и вставка отдельными запросами
+    // падали бы на уникальном индексе.
+    await this.achievementModel.bulkWrite(
+      achievementsToSeed.map((achievement) => ({
+        updateOne: {
+          filter: { key: achievement.key },
+          update: { $setOnInsert: achievement },
+          upsert: true,
+        },
+      })),
+      { ordered: false },
+    );
   }
 
   findAll(): Promise<Achievement[]> {

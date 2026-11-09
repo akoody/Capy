@@ -5,6 +5,7 @@ import { Test } from '@nestjs/testing';
 import type { Connection } from 'mongoose';
 import request from 'supertest';
 import type { App } from 'supertest/types';
+import { AchievementsService } from '../src/achievements/achievements.service';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { buildInitData } from '../src/auth/testing/sign-init-data';
@@ -57,6 +58,21 @@ describe('Operations (e2e)', () => {
 
   it('does not mistake missing auth for a rate limit', async () => {
     await http().get('/users/me').expect(401);
+  });
+
+  it('survives several processes seeding at once', async () => {
+    const achievements = app.get(AchievementsService);
+    await app
+      .get<Connection>(getConnectionToken())
+      .collection('achievements')
+      .deleteMany({});
+
+    await Promise.all(
+      Array.from({ length: 8 }, () => achievements.onModuleInit()),
+    );
+
+    const stored = await achievements.findOneByKey('MARATHONER');
+    expect(stored?.key).toBe('MARATHONER');
   });
 
   it('publishes an OpenAPI document when docs are enabled', async () => {
