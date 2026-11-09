@@ -15,7 +15,7 @@ import GoalsView from './views/GoalsView';
 import TasksView from './features/tasks/TasksView';
 import ProfileView from './views/ProfileView';
 import AcademyView from './views/AcademyView';
-import TransactionsView from './views/TransactionsView';
+import TransactionsView from './features/transactions/TransactionsView';
 import SettingsView from './views/SettingsView';
 import JournalView from './features/journal/JournalView';
 import JournalFAB from './components/JournalFAB';
