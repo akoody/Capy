@@ -11,6 +11,8 @@ import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { buildInitData } from '../src/auth/testing/sign-init-data';
 import { migrateMoney } from '../src/transactions/money-migration';
+import { VoiceCommandExecutor } from '../src/assistant/voice-command-executor.service';
+import type { VoiceInterpretResult } from '../src/assistant/voice-intent.types';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN as string;
 
@@ -227,6 +229,48 @@ describe('Ledger (e2e)', () => {
     expect(results.filter((r) => r.status === 200)).toHaveLength(2);
     const after = await http().get(`/goals/${goal.body._id}`).set(auth());
     expect(after.body.currentAmount).toBe(20);
+  });
+
+  it('executes voice wallet commands through the same ledger', async () => {
+    const executor = app.get(VoiceCommandExecutor);
+    const userId = (await http().get('/users/me').set(auth())).body
+      ._id as string;
+    const command = (overrides: Partial<VoiceInterpretResult>) =>
+      ({
+        confidence: 0.9,
+        amount: 100,
+        category: 'Еда',
+        description: null,
+        date: '2026-11-01',
+        reply_hint: '',
+        ...overrides,
+      }) as VoiceInterpretResult;
+
+    await executor.execute(command({ intent: 'wallet_deposit' }), userId);
+    const spent = await executor.execute(
+      command({ intent: 'create_expense', amount: 30, affect_wallet: true }),
+      userId,
+    );
+    expect(spent.transactionId).toBeDefined();
+    expect(await walletBalance()).toBe(70);
+
+    await expect(
+      executor.execute(
+        command({ intent: 'create_expense', amount: 500, affect_wallet: true }),
+        userId,
+      ),
+    ).rejects.toThrow('Недостаточно средств');
+    expect(await history()).toHaveLength(1);
+
+    await expect(
+      executor.execute(
+        command({ intent: 'wallet_deposit', amount: null }),
+        userId,
+      ),
+    ).rejects.toThrow('Сумма не указана');
+    await expect(
+      executor.execute(command({ intent: 'unknown' }), userId),
+    ).rejects.toThrow('Команда не выполнена');
   });
 
   it('migrates legacy float documents once and keeps the sums', async () => {
