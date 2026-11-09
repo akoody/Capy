@@ -17,7 +17,7 @@ import ProfileView from './views/ProfileView';
 import AcademyView from './views/AcademyView';
 import TransactionsView from './views/TransactionsView';
 import SettingsView from './views/SettingsView';
-import JournalView from './views/JournalView';
+import JournalView from './features/journal/JournalView';
 import JournalFAB from './components/JournalFAB';
 import VoiceAssistantFAB from './components/VoiceAssistantFAB';
 
