@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 // Axios uses baseURL `/api`; Nest has no global prefix, so paths are `/auth/login`, not `/api/auth/login`.
@@ -15,6 +15,10 @@ export default defineConfig({
     __APP_BUILD_ID__: JSON.stringify(buildId),
   },
   plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+  },
   server: {
     proxy: {
       '/api': {
