@@ -52,7 +52,7 @@ flowchart TB
 
 ## Качество
 
-- **Тесты:** 56 unit-тестов (проверка initData, guard, конфиг, LLM-цепочки и адаптеры с подменой HTTP) и 11 e2e-сценариев на настоящей MongoDB, где второй пользователь пытается прочитать, изменить и удалить данные первого.
+- **Тесты:** 85 unit-тестов (проверка initData, guard, конфиг, LLM-цепочки и адаптеры с подменой HTTP) и 24 e2e-сценария на настоящей MongoDB, где второй пользователь пытается прочитать, изменить и удалить данные первого.
 - **CI** ([ci.yml](.github/workflows/ci.yml)): Prettier, ESLint (`recommendedTypeChecked`, `--max-warnings=0`), typecheck, unit-тесты и сборка API; e2e с сервисом `mongo:7`; сборка фронта.
 - **Ревью через PR:** каждое изменение — отдельный PR с описанием проблемы, решения и того, что сознательно отложено ([история](https://github.com/akoody/Capy/pulls?q=is%3Apr+is%3Amerged)).
 
@@ -104,7 +104,7 @@ src/
   transactions/ goals/ budgets/ piggy-bank/   финансы
   tasks/ journal/                              планирование и заметки
   academy/ achievements/ gamification/ friends/ tips/
-  assistant/     голосовой ассистент
+  assistant/     голосовой ассистент: распознавание, разбор, выполнение
   users/ telegram/
 test/            e2e на MongoDB
 frontend/        Mini App
@@ -113,7 +113,6 @@ docs/            архитектура и журнал решений
 
 ## Дальше
 
-- **Ассистент:** разбить `AssistantService` на пайплайн transcribe → interpret → validate → execute, вынести распознавание речи в порт `SpeechToText`.
 - **Worker:** напоминания и AI-задачи — в отдельный процесс с очередью (BullMQ), чтобы API масштабировался горизонтально без дублирования cron.
 - **Эксплуатация:** Docker и compose вместо pm2-скриптов, health-check, структурные логи, OpenAPI.
 

@@ -9,6 +9,9 @@ import { TasksModule } from '../tasks/tasks.module';
 import { JournalModule } from '../journal/journal.module';
 import { BudgetsModule } from '../budgets/budgets.module';
 import { LlmModule } from '../llm/llm.module';
+import { SpeechToTextService } from './speech-to-text.service';
+import { VoiceContextService } from './voice-context.service';
+import { VoiceCommandExecutor } from './voice-command-executor.service';
 
 @Module({
   imports: [
@@ -22,6 +25,11 @@ import { LlmModule } from '../llm/llm.module';
     BudgetsModule,
   ],
   controllers: [AssistantController],
-  providers: [AssistantService],
+  providers: [
+    AssistantService,
+    SpeechToTextService,
+    VoiceContextService,
+    VoiceCommandExecutor,
+  ],
 })
 export class AssistantModule {}
