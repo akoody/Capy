@@ -84,11 +84,6 @@
   "piggy_bank": "Piggy Bank",
   "current_balance": "Current Balance",
   "first_goal": "First Goal",
-  "sort_by": "Sort by",
-  "sort_default": "Default",
-  "sort_progress": "By Progress",
-  "sort_amount": "By Amount",
-  "sort_date": "By Date",
   "level": "Level",
   "completed": "Completed",
   "progress": "Progress",
@@ -167,5 +162,7 @@
   "tx_category_field_hint": "Category is the type of flow. The note below is specifics (store, comment).",
   "tx_transaction_note": "Transaction note",
   "tx_transaction_note_placeholder": "e.g. Whole Foods, gift for mom",
-  "tx_category_required": "Pick a category or enter a new name."
+  "tx_category_required": "Pick a category or enter a new name.",
+  "voice_too_large": "The recording is too long. Try a shorter one.",
+  "voice_no_connection": "No connection to the server."
 }

@@ -1,113 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import api from '../services/api';
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { notifyVoiceCommandApplied, pickMimeType, sendVoiceCommand } from './voice-api';
+import { voiceErrorText } from './voice-errors';
 
-type Phase = 'idle' | 'recording' | 'uploading';
+export type VoicePhase = 'idle' | 'recording' | 'uploading';
 
-interface VoiceAssistantFABProps {
-  /** Called after a successful command (refresh parent lists if needed). */
-  onVoiceSuccess?: () => void;
-}
-
-const pickMimeType = (): string | undefined => {
-  // Whisper принимает mp4/m4a; webm — нет. Предпочитаем MP4, если браузер умеет.
-  const candidates = [
-    'audio/mp4;codecs=mp4a.40.2',
-    'audio/mp4',
-    'audio/webm;codecs=opus',
-    'audio/webm',
-  ];
-  for (const c of candidates) {
-    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(c)) {
-      return c;
-    }
-  }
-  return undefined;
-};
-
-function looksLikeGatewayHtmlBody(data: unknown): boolean {
-  if (typeof data !== 'string') {
-    return false;
-  }
-  const head = data.slice(0, 400).toLowerCase();
-  return (
-    head.includes('<html') ||
-    head.includes('<!doctype') ||
-    head.includes('nginx') ||
-    head.includes('bad gateway') ||
-    head.includes('gateway timeout')
-  );
-}
-
-/** Текст ошибки с Nest / OpenAI / nginx для тоста */
-function voiceRequestErrorMessage(err: unknown): string | null {
-  if (!err || typeof err !== 'object') return null;
-  const e = err as {
-    message?: string;
-    response?: {
-      status?: number;
-      data?: unknown;
-    };
-  };
-  const status = e.response?.status;
-  const data = e.response?.data;
-
-  if (typeof data === 'object' && data !== null) {
-    const d = data as Record<string, unknown>;
-    if (typeof d.message === 'string') return d.message;
-    if (Array.isArray(d.message)) return d.message.map(String).join('; ');
-    if (typeof d.error === 'object' && d.error !== null) {
-      const er = d.error as Record<string, unknown>;
-      if (typeof er.message === 'string') return er.message;
-    }
-  }
-
-  if (status === 413) {
-    return 'Файл слишком большой: в nginx увеличь client_max_body_size для /api/ (например 25m).';
-  }
-  if (status === 502 || status === 504) {
-    return 'Сервер не ответил (502/504). Проверьте pm2 и порт Nest.';
-  }
-  if (status === 503) {
-    return (
-      (typeof data === 'object' &&
-        data !== null &&
-        typeof (data as { message?: unknown }).message === 'string' &&
-        (data as { message: string }).message) ||
-      'Сервис временно недоступен (503). Проверьте .env и pm2 restart capy-api.'
-    );
-  }
-  if (status === 500) {
-    if (looksLikeGatewayHtmlBody(data)) {
-      return 'Ответ 500 с HTML (часто nginx до Node). Смотрите /var/log/nginx/error.log и таймауты proxy_* для location /api/.';
-    }
-    if (data === undefined || data === null || data === '') {
-      return 'Пустой ответ при 500: запрос мог не дойти до Nest. Проверьте nginx error.log и curl localhost:3001 с сервера.';
-    }
-    const hint =
-      typeof data === 'object' && data !== null && typeof (data as { message?: unknown }).message === 'string'
-        ? (data as { message: string }).message
-        : null;
-    return hint && hint !== 'Internal server error'
-      ? hint
-      : 'Ошибка сервера (500). Смотрите pm2 logs capy-api — если строк нет, это не Nest (см. nginx).';
-  }
-  if (status === 401 || status === 403) {
-    return 'Доступ запрещён (401/403). Проверьте TELEGRAM_BOT_TOKEN в .env на сервере.';
-  }
-
-  if (e.message === 'Network Error') {
-    return 'Нет соединения с сервером.';
-  }
-  if (typeof e.message === 'string' && e.message.length > 0 && e.message.length < 200) {
-    return e.message;
-  }
-  return null;
-}
-
-const VoiceAssistantFAB = ({ onVoiceSuccess }: VoiceAssistantFABProps) => {
+/** Запись по удержанию кнопки и отправка голосовой команды. */
+export function useVoiceCommand(onVoiceSuccess?: () => void) {
   const { t } = useTranslation();
-  const [phase, setPhase] = useState<Phase>('idle');
+  const [phase, setPhase] = useState<VoicePhase>('idle');
   const [toast, setToast] = useState<string | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -270,26 +171,11 @@ const VoiceAssistantFAB = ({ onVoiceSuccess }: VoiceAssistantFABProps) => {
       setPhase('uploading');
       haptic('light');
 
-      const ext = blobType.includes('mp4') ? 'm4a' : 'webm';
-      const form = new FormData();
-      form.append('audio', blob, `voice.${ext}`);
-
       try {
-        const { data } = await api.post<{
-          transcript: string;
-          message: string;
-          executed: boolean;
-          walletTouched?: boolean;
-        }>('/assistant/voice', form);
+        const data = await sendVoiceCommand(blob, blobType);
 
         if (data.executed) {
-          if (data.walletTouched) {
-            window.dispatchEvent(new CustomEvent('walletUpdated'));
-          }
-          window.dispatchEvent(new CustomEvent('capyTransactionsUpdated'));
-          window.dispatchEvent(new CustomEvent('tasksUpdated'));
-          window.dispatchEvent(new CustomEvent('capyCategoriesUpdated'));
-          window.dispatchEvent(new CustomEvent('capyBudgetsUpdated'));
+          notifyVoiceCommandApplied(data.walletTouched);
           onVoiceSuccess?.();
         }
         showToast(
@@ -297,8 +183,7 @@ const VoiceAssistantFAB = ({ onVoiceSuccess }: VoiceAssistantFABProps) => {
         );
       } catch (err: unknown) {
         console.error('assistant/voice', err);
-        const msg = voiceRequestErrorMessage(err);
-        showToast(msg ?? t('voice_request_failed'));
+        showToast(voiceErrorText(err, t));
       } finally {
         setPhase('idle');
       }
@@ -372,7 +257,7 @@ const VoiceAssistantFAB = ({ onVoiceSuccess }: VoiceAssistantFABProps) => {
     }
   }, [detachPointerEnd, finishRecording, phase, releaseMicStream, t]);
 
-  const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+  const onPointerDown = (e: PointerEvent<HTMLButtonElement>) => {
     e.preventDefault();
     const el = e.currentTarget;
     pointerCaptureRef.current = { el, id: e.pointerId };
@@ -384,64 +269,5 @@ const VoiceAssistantFAB = ({ onVoiceSuccess }: VoiceAssistantFABProps) => {
     void startRecording();
   };
 
-  const busy = phase === 'uploading';
-  const recording = phase === 'recording';
-
-  return (
-    <>
-      <button
-        type="button"
-        aria-label={t('voice_assistant')}
-        title={t('voice_hold_hint')}
-        disabled={busy}
-        onPointerDown={onPointerDown}
-        className={`fixed right-5 z-[10050] flex h-14 w-14 select-none items-center justify-center rounded-full transition-all duration-150 touch-none ${
-          recording || busy ? 'text-white' : 'text-[#0c0c0f]'
-        } ${busy ? 'scale-95 opacity-60' : 'active:scale-95'} ${
-          recording ? 'animate-pulse ring-4 ring-rose-500/50' : ''
-        }`}
-        style={{
-          bottom: 'var(--fab-voice-bottom)',
-          background: recording
-            ? '#be123c'
-            : 'linear-gradient(165deg, #c4b5fd 0%, var(--primary-color) 100%)',
-          boxShadow: recording
-            ? '0 4px 24px rgba(190, 18, 60, 0.45)'
-            : '0 4px 20px rgba(99, 102, 241, 0.35), 0 0 0 1px rgba(255,255,255,0.15) inset',
-        }}
-      >
-        {busy ? (
-          <span className="h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent opacity-90" />
-        ) : (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-7 w-7"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-            />
-          </svg>
-        )}
-      </button>
-      {toast && (
-        <div
-          className="fixed left-4 right-4 z-[60] rounded-[var(--radius-lg)] border border-white/10 bg-zinc-950/90 px-4 py-3.5 text-sm leading-relaxed text-zinc-100 shadow-2xl backdrop-blur-xl"
-          style={{
-            bottom: 'calc(var(--fab-voice-bottom) + 4rem)',
-          }}
-          role="status"
-        >
-          {toast}
-        </div>
-      )}
-    </>
-  );
-};
-
-export default VoiceAssistantFAB;
+  return { phase, toast, onPointerDown };
+}

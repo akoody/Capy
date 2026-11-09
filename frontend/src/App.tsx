@@ -19,7 +19,7 @@ import TransactionsView from './features/transactions/TransactionsView';
 import SettingsView from './views/SettingsView';
 import JournalView from './features/journal/JournalView';
 import JournalFAB from './components/JournalFAB';
-import VoiceAssistantFAB from './components/VoiceAssistantFAB';
+import VoiceAssistantFAB from './features/voice/VoiceAssistantFAB';
 
 const CourseView = lazy(() => import('./views/CourseView'));
 const LessonView = lazy(() => import('./views/LessonView'));
