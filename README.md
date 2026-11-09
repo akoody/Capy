@@ -23,10 +23,11 @@ flowchart TB
     CTRL --> ENG["Вовлечение<br/>academy · achievements · friends"]
     CTRL --> ASSIST["Голосовой ассистент"]
     LEDGER & PLAN & ASSIST --> LLM["LlmModule<br/>цепочки провайдеров"]
-    CRON["Напоминания<br/>cron"] --> NOTIFY["Telegram Bot API"]
   end
 
   LEDGER & PLAN & ENG --> DB[("MongoDB")]
+  WORKER["Worker<br/>напоминания"] --> DB
+  WORKER --> NOTIFY["Telegram Bot API"]
   LLM --> PROVIDERS["GigaChat · Gemini · DeepSeek · Groq · OpenAI"]
 ```
 
@@ -49,10 +50,11 @@ flowchart TB
 | [0004](docs/adr/0004-llm-provider-chains.md) | Все AI-провайдеры за одним модулем с цепочками fallback |
 | [0005](docs/adr/0005-keep-mongodb.md) | Остаёмся на MongoDB, деньги хранятся целыми в копейках, операции атомарны |
 | [0006](docs/adr/0006-quality-gates.md) | Strict TypeScript, линтер без warning, e2e на реальной базе в CI |
+| [0007](docs/adr/0007-worker-without-queue.md) | Фоновые задачи в отдельном процессе с атомарным захватом в MongoDB, без Redis |
 
 ## Качество
 
-- **Тесты:** 85 unit-тестов (проверка initData, guard, конфиг, LLM-цепочки и адаптеры с подменой HTTP) и 24 e2e-сценария на настоящей MongoDB, где второй пользователь пытается прочитать, изменить и удалить данные первого.
+- **Тесты:** 85 unit-тестов (проверка initData, guard, конфиг, LLM-цепочки и адаптеры с подменой HTTP) и 30 e2e-сценариев на настоящей MongoDB, где второй пользователь пытается прочитать, изменить и удалить данные первого.
 - **CI** ([ci.yml](.github/workflows/ci.yml)): Prettier, ESLint (`recommendedTypeChecked`, `--max-warnings=0`), typecheck, unit-тесты и сборка API; e2e с сервисом `mongo:7`; сборка фронта.
 - **Ревью через PR:** каждое изменение — отдельный PR с описанием проблемы, решения и того, что сознательно отложено ([история](https://github.com/akoody/Capy/pulls?q=is%3Apr+is%3Amerged)).
 
@@ -65,6 +67,7 @@ cp .env.example .env              # минимум: MONGODB_URI (replica set) и
 npm ci --legacy-peer-deps
 npm run seed                      # курсы академии
 npm run start:dev                 # API на :3001
+npm run start:worker:dev          # напоминания
 
 cd frontend && npm ci && npm run dev   # Mini App, проксирует /api на :3001
 ```
@@ -113,7 +116,6 @@ docs/            архитектура и журнал решений
 
 ## Дальше
 
-- **Worker:** напоминания и AI-задачи — в отдельный процесс с очередью (BullMQ), чтобы API масштабировался горизонтально без дублирования cron.
 - **Эксплуатация:** Docker и compose вместо pm2-скриптов, health-check, структурные логи, OpenAPI.
 
 ## Лицензия

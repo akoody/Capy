@@ -25,7 +25,9 @@
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
     "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
-    "migrate:money": "ts-node -T src/scripts/migrate-money.ts"
+    "migrate:money": "ts-node -T src/scripts/migrate-money.ts",
+    "start:worker": "node dist/worker",
+    "start:worker:dev": "nest start --watch --entryFile worker"
   },
   "dependencies": {
     "@nestjs/cache-manager": "^3.0.1",

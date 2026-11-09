@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Task, TaskDocument } from './schemas/task.schema';
+import { Task, TaskDocument, type TaskReminder } from './schemas/task.schema';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { UserDocument } from '../users/schemas/user.schema';
@@ -21,6 +21,9 @@ function parseReminderTimes(raw?: string[]): { fireAt: Date }[] {
   }
   return out;
 }
+
+const REMINDER_CLAIM_TTL_MS = 5 * 60_000;
+const REMINDER_MAX_ATTEMPTS = 5;
 
 @Injectable()
 export class TasksService {
@@ -139,51 +142,103 @@ export class TasksService {
     );
   }
 
+  /**
+   * Отправляет наступившие напоминания. Перед отправкой напоминание атомарно
+   * занимается, поэтому несколько воркеров не шлют его дважды. Занятое упавшим
+   * воркером освобождается через REMINDER_CLAIM_TTL_MS, неудачная отправка
+   * повторяется на следующих запусках, но не больше REMINDER_MAX_ATTEMPTS раз.
+   */
   async processDueReminders(
     send: (telegramId: number, text: string) => Promise<boolean>,
+    now: Date = new Date(),
   ): Promise<void> {
+    const staleClaim = new Date(now.getTime() - REMINDER_CLAIM_TTL_MS);
+    const available = {
+      sentAt: { $exists: false },
+      fireAt: { $lte: now },
+      $or: [
+        { claimedAt: { $exists: false } },
+        { claimedAt: { $lte: staleClaim } },
+      ],
+    };
+
     const tasks = await this.taskModel
-      .find({
-        status: 'open',
-        reminders: {
-          $elemMatch: {
-            fireAt: { $lte: new Date() },
-            sentAt: { $exists: false },
-          },
-        },
-      })
+      .find({ status: 'open', reminders: { $elemMatch: available } })
       .populate<{ user: UserDocument }>('user')
       .exec();
 
-    const now = new Date();
     for (const task of tasks) {
-      const u = task.user;
-      const tid = u?.telegramId;
-      if (tid == null) continue;
+      const telegramId = task.user?.telegramId;
+      if (telegramId == null) continue;
 
-      let changed = false;
-      for (let i = 0; i < task.reminders.length; i++) {
-        const r = task.reminders[i];
-        if (r.sentAt) continue;
-        if (r.fireAt > now) continue;
-        const pri =
-          task.priority === 'high'
-            ? '🔴'
-            : task.priority === 'low'
-              ? '⚪'
-              : '🟡';
-        const dueLine = task.dueAt
-          ? `\nСрок: ${task.dueAt.toISOString().slice(0, 10)}`
-          : '';
-        const text = `${pri} Capy — напоминание\n«${task.title}»${dueLine}`;
-        await send(tid, text);
-        task.reminders[i].sentAt = new Date();
-        changed = true;
-      }
-      if (changed) {
-        task.markModified('reminders');
-        await task.save();
+      for (const reminder of task.reminders) {
+        if (reminder.sentAt || reminder.fireAt > now) continue;
+
+        const claimed = await this.taskModel.updateOne(
+          {
+            _id: task._id,
+            reminders: { $elemMatch: { _id: reminder._id, ...available } },
+          },
+          { $set: { 'reminders.$.claimedAt': now } },
+        );
+        if (claimed.modifiedCount === 0) continue;
+
+        await this.finishReminder(
+          task._id,
+          reminder,
+          await this.sendReminder(send, telegramId, reminderText(task)),
+        );
       }
     }
   }
+
+  private async sendReminder(
+    send: (telegramId: number, text: string) => Promise<boolean>,
+    telegramId: number,
+    text: string,
+  ): Promise<boolean> {
+    try {
+      return await send(telegramId, text);
+    } catch {
+      return false;
+    }
+  }
+
+  private async finishReminder(
+    taskId: Types.ObjectId,
+    reminder: TaskReminder,
+    delivered: boolean,
+  ): Promise<void> {
+    const filter = { _id: taskId, 'reminders._id': reminder._id };
+    const attempts = (reminder.attempts ?? 0) + 1;
+
+    if (delivered) {
+      await this.taskModel.updateOne(filter, {
+        $set: { 'reminders.$.sentAt': new Date() },
+      });
+    } else if (attempts >= REMINDER_MAX_ATTEMPTS) {
+      const failedAt = new Date();
+      await this.taskModel.updateOne(filter, {
+        $set: {
+          'reminders.$.sentAt': failedAt,
+          'reminders.$.failedAt': failedAt,
+          'reminders.$.attempts': attempts,
+        },
+      });
+    } else {
+      await this.taskModel.updateOne(filter, {
+        $set: { 'reminders.$.attempts': attempts },
+        $unset: { 'reminders.$.claimedAt': 1 },
+      });
+    }
+  }
+}
+
+function reminderText(task: { priority: string; title: string; dueAt?: Date }) {
+  const marker =
+    task.priority === 'high' ? '🔴' : task.priority === 'low' ? '⚪' : '🟡';
+  const dueLine = task.dueAt
+    ? `\nСрок: ${task.dueAt.toISOString().slice(0, 10)}`
+    : '';
+  return `${marker} Capy — напоминание\n«${task.title}»${dueLine}`;
 }

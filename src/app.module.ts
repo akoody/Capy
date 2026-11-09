@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ScheduleModule } from '@nestjs/schedule';
 import { appEnvSchema, createEnvValidator } from './config/env.schema';
 import { UsersModule } from './users/users.module';
 import { GoalsModule } from './goals/goals.module';
@@ -24,7 +23,6 @@ import { TasksModule } from './tasks/tasks.module';
 
 @Module({
   imports: [
-    ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       validate: createEnvValidator(appEnvSchema),
