@@ -1,5 +1,10 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AccountThrottlerGuard } from './auth/account-throttler.guard';
+import { HealthController } from './health/health.controller';
+import { LoggingModule } from './observability/logging.module';
+import type { AppEnv } from './config/env.schema';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { appEnvSchema, createEnvValidator } from './config/env.schema';
@@ -27,6 +32,16 @@ import { TasksModule } from './tasks/tasks.module';
       isGlobal: true,
       validate: createEnvValidator(appEnvSchema),
     }),
+    LoggingModule,
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<AppEnv, true>) => [
+        {
+          ttl: config.get('THROTTLE_TTL_SECONDS', { infer: true }) * 1000,
+          limit: config.get('THROTTLE_LIMIT', { infer: true }),
+        },
+      ],
+    }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -49,9 +64,12 @@ import { TasksModule } from './tasks/tasks.module';
     AssistantModule,
     TasksModule,
   ],
+  controllers: [HealthController],
   providers: [
     { provide: ACCOUNT_RESOLVER, useExisting: UsersService },
+    // Порядок важен: лимит считается по аккаунту, который определяет guard подписи.
     { provide: APP_GUARD, useClass: TelegramAuthGuard },
+    { provide: APP_GUARD, useClass: AccountThrottlerGuard },
   ],
 })
 export class AppModule {}

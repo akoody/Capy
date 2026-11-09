@@ -10,3 +10,6 @@ const baseUri = (
 process.env.MONGODB_URI = `${baseUri}/capy_e2e_${process.pid}_${Date.now()}?directConnection=true`;
 process.env.TELEGRAM_BOT_TOKEN = '777:e2e-bot-token';
 process.env.NODE_ENV = 'test';
+process.env.LOG_LEVEL = 'error';
+process.env.THROTTLE_LIMIT = '100000';
+process.env.DOCS_ENABLED = 'true';

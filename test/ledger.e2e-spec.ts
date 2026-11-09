@@ -2,13 +2,14 @@
  * Деньги: целые копейки, атомарность записи и кошелька, отсутствие гонок.
  * Нужен replica set: транзакции MongoDB на одиночном сервере не работают.
  */
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import type { INestApplication } from '@nestjs/common';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import type { Connection } from 'mongoose';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/app.setup';
 import { buildInitData } from '../src/auth/testing/sign-init-data';
 import { migrateMoney } from '../src/transactions/money-migration';
 import { VoiceCommandExecutor } from '../src/assistant/voice-command-executor.service';
@@ -49,9 +50,7 @@ describe('Ledger (e2e)', () => {
       imports: [AppModule],
     }).compile();
     app = moduleRef.createNestApplication({ logger: ['error'] });
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, transform: true }),
-    );
+    configureApp(app);
     await app.init();
     connection = app.get<Connection>(getConnectionToken());
   });

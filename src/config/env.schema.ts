@@ -32,6 +32,17 @@ export const appEnvSchema = seederEnvSchema.extend({
     .enum(['development', 'test', 'production'])
     .default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
+  LOG_LEVEL: z
+    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
+    .default('info'),
+  /** Запросов на аккаунт за окно THROTTLE_TTL_SECONDS. */
+  THROTTLE_LIMIT: z.coerce.number().int().positive().default(240),
+  THROTTLE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
+  /** Swagger UI на /docs. В продакшене по умолчанию выключен. */
+  DOCS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   TELEGRAM_BOT_TOKEN: secret(),
   /** Срок жизни initData Mini App. Telegram не обновляет её во время сессии. */
   TELEGRAM_AUTH_MAX_AGE_SECONDS: z.coerce

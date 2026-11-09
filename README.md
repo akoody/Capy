@@ -51,6 +51,7 @@ flowchart TB
 | [0005](docs/adr/0005-keep-mongodb.md) | Остаёмся на MongoDB, деньги хранятся целыми в копейках, операции атомарны |
 | [0006](docs/adr/0006-quality-gates.md) | Strict TypeScript, линтер без warning, e2e на реальной базе в CI |
 | [0007](docs/adr/0007-worker-without-queue.md) | Фоновые задачи в отдельном процессе с атомарным захватом в MongoDB, без Redis |
+| [0008](docs/adr/0008-operations-baseline.md) | Пробы, структурные логи, лимит на аккаунт, контейнеры |
 
 ## Качество
 
@@ -114,9 +115,13 @@ frontend/        Mini App
 docs/            архитектура и журнал решений
 ```
 
-## Дальше
+## Эксплуатация
 
-- **Эксплуатация:** Docker и compose вместо pm2-скриптов, health-check, структурные логи, OpenAPI.
+```bash
+TELEGRAM_BOT_TOKEN=... docker compose up --build
+```
+
+Приложение откроется на `http://localhost:8080`, API доступен по `/api`. `GET /health` и `GET /ready` — пробы процесса и базы. Логи идут в stdout в JSON с `x-request-id`. Документация API включается через `DOCS_ENABLED=true` и лежит на `/docs`. Решения описаны в [ADR-0008](docs/adr/0008-operations-baseline.md).
 
 ## Лицензия
 
