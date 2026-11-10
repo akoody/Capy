@@ -8,7 +8,7 @@ export interface VoiceCommandResult {
 }
 
 export const pickMimeType = (): string | undefined => {
-  // Whisper принимает mp4/m4a; webm — нет. Предпочитаем MP4, если браузер умеет.
+  // Whisper принимает mp4/m4a, но не webm. Предпочитаем MP4, если браузер умеет.
   const candidates = [
     'audio/mp4;codecs=mp4a.40.2',
     'audio/mp4',

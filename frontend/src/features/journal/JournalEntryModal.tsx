@@ -5,7 +5,7 @@ import api, { apiErrorMessage } from '../../services/api';
 import type { JournalEntry } from '../../types';
 
 interface JournalEntryModalProps {
-  /** Запись для редактирования, null — новая. Компонент монтируется на каждое открытие. */
+  /** Запись для редактирования или null для новой. Компонент монтируется на каждое открытие. */
   entry: JournalEntry | null;
   onClose: () => void;
   onSaved: () => void;

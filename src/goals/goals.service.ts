@@ -99,7 +99,7 @@ export class GoalsService {
     updateGoalAmountDto: UpdateGoalAmountDto,
   ): Promise<Goal> {
     const amountMinor = toMinor(updateGoalAmountDto.amount);
-    // Проверка остатка и списание — один запрос, параллельно в минус не уйти.
+    // Проверка остатка и списание идут одним запросом, параллельно в минус не уйти.
     const updated = await this.goalModel
       .findOneAndUpdate(
         { ...ownedBy(userId, id), currentAmountMinor: { $gte: amountMinor } },

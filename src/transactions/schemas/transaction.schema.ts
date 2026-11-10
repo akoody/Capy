@@ -24,7 +24,7 @@ export class Transaction {
   @Prop({ required: true })
   currency!: string;
 
-  /** Как операция изменила кошелёк; нет поля — кошелёк не затронут. */
+  /** Как операция изменила кошелёк; без этого поля кошелёк не затронут. */
   @Prop({ type: String, enum: [...WALLET_EFFECTS] })
   walletEffect?: WalletEffect;
 

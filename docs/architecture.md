@@ -2,7 +2,7 @@
 
 ## Обзор
 
-Capy — Telegram Mini App. Фронт (React + Vite) отдаётся nginx как статика, запросы к `/api` nginx проксирует в NestJS API на том же домене. Данные лежат в MongoDB. AI-функции обращаются к внешним LLM-провайдерам, напоминания уходят через Telegram Bot API.
+Capy работает как Telegram Mini App. Фронт (React + Vite) отдаётся nginx как статика, запросы к `/api` nginx проксирует в NestJS API на том же домене. Данные лежат в MongoDB. AI-функции обращаются к внешним LLM-провайдерам, напоминания уходят через Telegram Bot API.
 
 ```mermaid
 sequenceDiagram
@@ -20,7 +20,7 @@ sequenceDiagram
   else данные просрочены
     G-->>C: 401 (клиент переоткрывает Mini App)
   end
-  G->>U: resolveAccountId(user) — атомарный upsert по telegramId
+  G->>U: resolveAccountId(user), атомарный upsert по telegramId
   U-->>G: userId
   G->>H: request.account = { userId, telegramId }
   H->>S: findOne(userId, id)
@@ -51,7 +51,7 @@ sequenceDiagram
 - Сервисы принимают `userId` первым аргументом. Запросы по id идут через `ownedBy(userId, id)`, который заодно отсекает некорректные ObjectId (404 вместо 500 от CastError).
 - Наружу отдаются только публичные поля других пользователей (лидерборд, друзья): `firstName`, `username`, `photoUrl`, `points`.
 - Суммы только положительные и с точностью до копейки, хранятся целыми числами. Направление операции задаёт маршрут, а не знак суммы.
-- Баланс кошелька меняется только через `WalletBalanceService`: атомарный `$inc`, списание с условием на остаток в том же запросе. Операция и движение денег записываются одной транзакцией MongoDB: не хватило денег — не сохранилось ничего, удаление операции возвращает средства.
+- Баланс кошелька меняется только через `WalletBalanceService`: атомарный `$inc`, списание с условием на остаток в том же запросе. Операция и движение денег записываются одной транзакцией MongoDB: если денег не хватило, не сохраняется ничего, удаление операции возвращает средства.
 
 Подробнее: [ADR-0002](adr/0002-telegram-init-data-guard.md), [ADR-0003](adr/0003-owner-scoped-data-access.md).
 
@@ -65,7 +65,7 @@ flowchart LR
   L -.->|только interpret, первым| O["OpenAI"]
 ```
 
-- Каждый провайдер — адаптер `LlmProvider` с типизированным ответом. OpenAI, DeepSeek и Groq используют один `OpenAiCompatibleProvider`.
+- Каждый провайдер реализован как адаптер `LlmProvider` с типизированным ответом. OpenAI, DeepSeek и Groq используют один `OpenAiCompatibleProvider`.
 - `LlmService.complete(prompt, options, purpose)` пробует настроенных провайдеров по порядку и, если не ответил никто, бросает `LlmUnavailableError` со списком отказов.
 - GigaChat кэширует OAuth-токен до истечения и сбрасывает его после 401/403. TLS проверяется, если задан `GIGACHAT_CA_CERT_PATH`.
 - Лимиты: 3 анализа одного типа за 2 часа на пользователя, отдельный лимит на голосовые команды.

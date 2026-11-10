@@ -11,7 +11,7 @@ export class TelegramNotifyService {
     const token = normalizeEnvSecret(process.env.TELEGRAM_BOT_TOKEN);
     if (!token) {
       this.logger.warn(
-        'TELEGRAM_BOT_TOKEN не задан — напоминание не отправлено',
+        'TELEGRAM_BOT_TOKEN не задан, напоминание не отправлено',
       );
       return false;
     }

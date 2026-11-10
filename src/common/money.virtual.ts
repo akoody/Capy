@@ -3,7 +3,7 @@ import { toMajor, toMinor } from './money';
 
 /**
  * Поле в основных единицах поверх хранимого поля в копейках: API и код
- * чтения работают с `amount`, база — с целым `amountMinor`.
+ * чтения работают с `amount`, а база с целым `amountMinor`.
  */
 export function moneyVirtual(
   schema: Schema,
@@ -21,7 +21,7 @@ export function moneyVirtual(
     });
 }
 
-/** Виртуальные поля попадают в JSON, служебный `id` — нет. */
+/** Виртуальные поля попадают в JSON, а служебный `id` нет. */
 export const SERIALIZE_MONEY = {
   id: false,
   toJSON: { virtuals: true },

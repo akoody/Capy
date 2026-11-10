@@ -11,7 +11,7 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 export const currencySymbol = (currency: string) =>
   CURRENCY_SYMBOLS[currency] ?? currency;
 
-/** Доходы и расходы — операции с копилкой и целями в ленту не входят. */
+/** В ленту входят только доходы и расходы, операции с копилкой и целями нет. */
 export const isCashflow = (t: Transaction) =>
   t.type === 'income' || t.type === 'expense';
 

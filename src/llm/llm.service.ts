@@ -14,7 +14,7 @@ export const LLM_PROVIDERS = Symbol('LLM_PROVIDERS');
 
 /**
  * Текстовые ответы LLM с fallback: провайдеры пробуются по порядку,
- * ненастроенные пропускаются. Если не ответил ни один — LlmUnavailableError.
+ * ненастроенные пропускаются. Если не ответил ни один, бросается LlmUnavailableError.
  */
 @Injectable()
 export class LlmService {

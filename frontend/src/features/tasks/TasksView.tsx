@@ -18,7 +18,7 @@ interface TasksViewProps {
   userId: string | null;
 }
 
-/** undefined — форма закрыта, null — новая задача. */
+/** undefined: форма закрыта, null: новая задача. */
 type EditorState = Task | null | undefined;
 
 const TasksView = ({ userId }: TasksViewProps) => {

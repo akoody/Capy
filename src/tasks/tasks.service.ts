@@ -240,5 +240,5 @@ function reminderText(task: { priority: string; title: string; dueAt?: Date }) {
   const dueLine = task.dueAt
     ? `\nСрок: ${task.dueAt.toISOString().slice(0, 10)}`
     : '';
-  return `${marker} Capy — напоминание\n«${task.title}»${dueLine}`;
+  return `${marker} Capy: напоминание\n«${task.title}»${dueLine}`;
 }
