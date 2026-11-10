@@ -57,7 +57,7 @@ export function verifyTelegramInitData(
     return { ok: false, reason: 'bad_signature' };
   }
 
-  // Подпись верна — дальше проверяем только содержимое.
+  // Подпись верна, дальше проверяем только содержимое.
   const authDateSeconds = Number(params.get('auth_date'));
   if (!Number.isInteger(authDateSeconds) || authDateSeconds <= 0) {
     return { ok: false, reason: 'malformed' };

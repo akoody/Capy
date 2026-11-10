@@ -5,7 +5,7 @@ import type { Task } from '../../types';
 import { draftFromTask, draftToPayload, emptyTaskDraft, type TaskDraft } from './task-form';
 
 interface TaskFormModalProps {
-  /** Задача для редактирования, null — новая. Компонент монтируется на каждое открытие. */
+  /** Задача для редактирования или null для новой. Компонент монтируется на каждое открытие. */
   task: Task | null;
   onClose: () => void;
   onSaved: () => void;

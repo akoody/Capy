@@ -8,7 +8,7 @@ import { GigaChatProvider } from './providers/gigachat.provider';
 import { OpenAiCompatibleProvider } from './providers/openai-compatible.provider';
 
 /**
- * Порядок важен: GigaChat лучше всех пишет по-русски, Groq — последний резерв.
+ * Порядок важен: GigaChat лучше всех пишет по-русски, Groq остаётся последним резервом.
  * Для разбора голосовых команд первым идёт OpenAI: он умеет строгий JSON-режим.
  */
 function createChains(config: ConfigService<AppEnv, true>): LlmChains {

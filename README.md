@@ -31,7 +31,7 @@ flowchart TB
   LLM --> PROVIDERS["GigaChat · Gemini · DeepSeek · Groq · OpenAI"]
 ```
 
-Бэкенд — модульный монолит на NestJS. Каждый запрос проходит один и тот же путь:
+Бэкенд устроен как модульный монолит на NestJS. Каждый запрос проходит один и тот же путь:
 
 1. **`TelegramAuthGuard`** проверяет HMAC-подпись `initData` от Telegram за постоянное время, отклоняет просроченные данные и атомарно находит или создаёт аккаунт.
 2. **Контроллер** получает владельца только через `@CurrentUserId()`. Id пользователя из query, body или params для этого не используется.
@@ -45,8 +45,8 @@ flowchart TB
 | ADR | Решение |
 |---|---|
 | [0001](docs/adr/0001-validate-config-at-startup.md) | Конфигурация проверяется zod-схемой при старте: процесс падает сразу, а не на первом запросе |
-| [0002](docs/adr/0002-telegram-init-data-guard.md) | Аутентификация — глобальный guard по initData с TTL вместо middleware |
-| [0003](docs/adr/0003-owner-scoped-data-access.md) | Владелец данных берётся только из подписи, доступ к записям — через `ownedBy` |
+| [0002](docs/adr/0002-telegram-init-data-guard.md) | Аутентификация: глобальный guard по initData с TTL вместо middleware |
+| [0003](docs/adr/0003-owner-scoped-data-access.md) | Владелец данных берётся только из подписи, доступ к записям идёт через `ownedBy` |
 | [0004](docs/adr/0004-llm-provider-chains.md) | Все AI-провайдеры за одним модулем с цепочками fallback |
 | [0005](docs/adr/0005-keep-mongodb.md) | Остаёмся на MongoDB, деньги хранятся целыми в копейках, операции атомарны |
 | [0006](docs/adr/0006-quality-gates.md) | Strict TypeScript, линтер без warning, e2e на реальной базе в CI |
@@ -58,7 +58,7 @@ flowchart TB
 
 - **Тесты:** 87 unit-тестов (проверка initData, guard, конфиг, LLM-цепочки и адаптеры с подменой HTTP) и 36 e2e-сценариев на настоящей MongoDB, где второй пользователь пытается прочитать, изменить и удалить данные первого.
 - **CI** ([ci.yml](.github/workflows/ci.yml)): Prettier, ESLint (`recommendedTypeChecked`, `--max-warnings=0`), typecheck, unit-тесты и сборка API; e2e с сервисом `mongo:7`; сборка фронта.
-- **Ревью через PR:** каждое изменение — отдельный PR с описанием проблемы, решения и того, что сознательно отложено ([история](https://github.com/akoody/Capy/pulls?q=is%3Apr+is%3Amerged)).
+- **Ревью через PR:** каждое изменение идёт отдельным PR с описанием проблемы, решения и того, что сознательно отложено ([история](https://github.com/akoody/Capy/pulls?q=is%3Apr+is%3Amerged)).
 
 ## Запуск локально
 
@@ -91,9 +91,9 @@ MONGODB_TEST_URI=mongodb://127.0.0.1:27017 npm run test:e2e   # каждая п�
 | `MONGODB_URI` | да | Подключение к MongoDB |
 | `TELEGRAM_BOT_TOKEN` | да | Проверка подписи initData и отправка напоминаний |
 | `TELEGRAM_AUTH_MAX_AGE_SECONDS` | нет | Срок жизни initData, по умолчанию сутки |
-| `CORS_ORIGINS` | нет | Список origin через запятую; пусто — CORS выключен (фронт и API на одном домене) |
+| `CORS_ORIGINS` | нет | Список origin через запятую; если пусто, CORS выключен (фронт и API на одном домене) |
 | `GIGACHAT_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `GROQ_API_KEY` | хотя бы один | AI-разборы финансов и журнала |
-| `OPENAI_API_KEY` | нет | Распознавание речи и разбор голосовых команд (запасной вариант — Groq) |
+| `OPENAI_API_KEY` | нет | Распознавание речи и разбор голосовых команд (запасной вариант: Groq) |
 | `GIGACHAT_CA_CERT_PATH` | нет | Корневой сертификат Минцифры для проверки TLS GigaChat |
 
 Полный список с комментариями: [.env.example](.env.example).
@@ -122,7 +122,7 @@ docs/            архитектура и журнал решений
 TELEGRAM_BOT_TOKEN=... docker compose up --build
 ```
 
-Приложение откроется на `http://localhost:8080`, API доступен по `/api`. `GET /health` и `GET /ready` — пробы процесса и базы. Логи идут в stdout в JSON с `x-request-id`. Документация API включается через `DOCS_ENABLED=true` и лежит на `/docs`. Решения описаны в [ADR-0008](docs/adr/0008-operations-baseline.md).
+Приложение откроется на `http://localhost:8080`, API доступен по `/api`. `GET /health` и `GET /ready` проверяют процесс и базу. Логи идут в stdout в JSON с `x-request-id`. Документация API включается через `DOCS_ENABLED=true` и лежит на `/docs`. Решения описаны в [ADR-0008](docs/adr/0008-operations-baseline.md).
 
 ## Лицензия
 

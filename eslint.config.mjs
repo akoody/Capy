@@ -38,7 +38,7 @@ export default tseslint.config(
   },
   {
     // Тело ответа supertest типизировано как any: проверяем его через expect.
-    // expect(mock.method) — штатный приём jest, а не потерянный this.
+    // expect(mock.method): штатный приём jest, а не потерянный this.
     files: ['test/**/*.ts', 'src/**/*.spec.ts'],
     rules: {
       '@typescript-eslint/unbound-method': 'off',

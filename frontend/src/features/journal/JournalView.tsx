@@ -25,7 +25,7 @@ interface JournalViewProps {
   onEntriesUpdate?: (entries: JournalEntry[]) => void;
 }
 
-/** undefined — форма закрыта, null — новая запись. */
+/** undefined: форма закрыта, null: новая запись. */
 type EditorState = JournalEntry | null | undefined;
 
 const JournalView = ({

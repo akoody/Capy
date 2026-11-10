@@ -139,7 +139,7 @@ export function isVoiceItemExecutable(i: VoiceInterpretResult): boolean {
 
 /**
  * LLM часто занижает confidence (и для коротких «еда 1000», и для длинных рассказов со суммами).
- * Если уже извлечены исполняемое намерение и положительная сумма — поднимаем пол до порога.
+ * Если уже извлечены исполняемое намерение и положительная сумма, поднимаем пол до порога.
  */
 export function applyStructuralConfidenceFloor(
   interpreted: VoiceInterpretResult,

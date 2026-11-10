@@ -51,7 +51,7 @@ export const appEnvSchema = seederEnvSchema.extend({
     .positive()
     .default(24 * 60 * 60),
   /**
-   * Список origin через запятую. Пусто — CORS выключен: в продакшене фронт и API
+   * Список origin через запятую. Если пусто, CORS выключен: в продакшене фронт и API
    * на одном домене (nginx проксирует /api).
    */
   CORS_ORIGINS: z

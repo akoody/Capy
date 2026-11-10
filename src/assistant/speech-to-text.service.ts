@@ -136,7 +136,7 @@ export class SpeechToTextService {
       throw new BadRequestException(
         typeof apiMsg === 'string' && apiMsg.trim().length > 0
           ? `OpenAI: ${apiMsg.trim()}`
-          : 'Ошибка авторизации OpenAI (проверьте OPENAI_API_KEY и при командном аккаунте — OPENAI_ORGANIZATION в .env)',
+          : 'Ошибка авторизации OpenAI (проверьте OPENAI_API_KEY а для командного аккаунта и OPENAI_ORGANIZATION в .env)',
       );
     }
     if (response.status !== 200) {

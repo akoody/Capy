@@ -12,7 +12,7 @@ export interface CompletionOptions {
 
 /**
  * Назначение запроса определяет цепочку провайдеров:
- * analysis — текстовые разборы финансов, interpret — разбор голосовых команд в JSON.
+ * analysis: текстовые разборы финансов, interpret: разбор голосовых команд в JSON.
  */
 export type LlmPurpose = 'analysis' | 'interpret';
 
